@@ -1,0 +1,56 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "game/map/maps/map1.tmx",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "": {
+            "scaleInDock": 1
+        },
+        "#tileset1": {
+            "scaleInDock": 1
+        },
+        "game/map/maps/map1.tmx": {
+            "scale": 5.5,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 141.2727272727273,
+                "y": 76
+            }
+        },
+        "game/map/maps/map1.tmx#tileset1": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "game/map/tileset/tileset1.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 23
+        }
+    },
+    "last.exportedFilePath": "C:/Gamedev/love/games/newgame/game/map/maps",
+    "last.externalTilesetPath": "C:/Gamedev/love/games/newgame/game/map/tileset",
+    "last.imagePath": "C:/Gamedev/love/games/newgame/game/map/tileset",
+    "map.height": 30,
+    "map.lastUsedExportFilter": "Lua files (*.lua)",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 8,
+    "map.tileWidth": 8,
+    "openFiles": [
+        "game/map/tileset/tileset1.tsx",
+        "game/map/maps/map1.tmx"
+    ],
+    "project": "tiled-project.tiled-project",
+    "recentFiles": [
+        "game/map/tileset/tileset1.tsx",
+        "game/map/maps/map1.tmx"
+    ],
+    "tileset.lastUsedFilter": "Tiled tileset files (*.tsx *.xml)",
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 8,
+        "width": 8
+    }
+}

@@ -21,30 +21,51 @@ function Color:__tostring()
 end
 
 function Color:__add(other)
+	if type(other) == "number" then
+		return Color(self.r + other, self.g + other, self.b + other, self.a + other)
+	end
 	return Color(self.r + other.r, self.g + other.g, self.b + other.b, self.a + other.a)
 end
 
 function Color:__sub(other)
+	if type(other) == "number" then
+		return Color(self.r - other, self.g - other, self.b - other, self.a - other)
+	end
     return Color(self.r - other.r, self.g - other.g, self.b - other.b, self.a - other.a)
 end
 
 function Color:__mul(other)
+	if type(other) == "number" then
+		return Color(self.r * other, self.g * other, self.b * other, self.a * other)
+	end
     return Color(self.r * other.r, self.g * other.g, self.b * other.b, self.a * other.a)
 end
 
 function Color:__div(other)
+	if type(other) == "number" then
+		return Color(self.r / other, self.g / other, self.b / other, self.a / other)
+	end
     return Color(self.r / other.r, self.g / other.g, self.b / other.b, self.a / other.a)
 end
 
 function Color:__eq(other)
+	if type(other) == "number" then
+		return self.r == other and self.g == other and self.b == other and self.a == other
+	end
     return self.r == other.r and self.g == other.g and self.b == other.b and self.a == other.a
 end
 
 function Color:__lt(other)
+	if type(other) == "number" then
+		return self.r < other and self.g < other and self.b < other and self.a < other
+	end
     return self.r < other.r and self.g < other.g and self.b < other.b and self.a < other.a
 end
 
 function Color:__le(other)
+	if type(other) == "number" then
+		return self.r <= other and self.g <= other and self.b <= other and self.a <= other
+	end
     return self.r <= other.r and self.g <= other.g and self.b <= other.b and self.a <= other.a
 end
 

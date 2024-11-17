@@ -62,7 +62,51 @@ function file.get_modules(path, t)
 		::continue::
 	end
 	return t
+end
 
+
+function file.path_process(path)
+    if love.system.getOS() == "Windows" then
+        return string.gsub(path, "/", "\\")
+    else
+        return string.gsub(path, "\\", "/")
+    end
+end
+
+function file.get_native_separator()
+	if love.system.getOS() == "Windows" then
+		return "\\"
+	else
+		return "/"
+	end
+end
+
+function file.load_file_native(path)
+    local wd = nativefs.getWorkingDirectory()
+	local fp = file.path_process(wd .. file.get_native_separator() .. path)
+    local file = nativefs.newFile(fp)
+    file:open("r")
+	return file:read()
+end
+
+function file.save_file_native(data, path)
+    local wd = nativefs.getWorkingDirectory()
+
+	local dirs = string.split(file.path_process(path), file.get_native_separator())
+    dirs[#dirs] = nil
+	local p = ""
+    for _, dir in ipairs(dirs) do
+		p = p .. file.get_native_separator() .. dir
+		if not nativefs.getInfo(wd .. p) then
+			nativefs.createDirectory(wd .. p)
+		end
+	end
+
+	local fp = file.path_process(wd .. file.get_native_separator() .. path)
+    local file = nativefs.newFile(fp)
+
+	file:open("w")
+	file:write(data)
 end
 
 function file.save_image(image, name)

@@ -5,9 +5,9 @@ uniform sampler2D pixel_texture;
 uniform float tile_size = 1.0;   
 uniform float image_size = 1.0;  
 
-uniform float effect_strength = 0.2; 
+uniform float effect_strength = 0.3; 
 
-uniform float brightness = 1.6;
+uniform float brightness = 1.8;
 
 vec4 lerp(vec4 a, vec4 b, float t) {
     return a + (b - a) * t;

@@ -17,8 +17,12 @@ function MainScreen:update(dt)
 	end
 end
 
-function MainScreen:enter()
+function MainScreen:draw()
+	graphics.draw(textures.screenexample)
+end
 
+function MainScreen:enter()
+	-- self:push("LevelEdit")
 end
 
 return MainScreen

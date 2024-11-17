@@ -331,6 +331,8 @@ function graphics.set_color(r, g, b, a)
 	love.graphics.setColor(r, g, b, a)
 end
 
+function graphics.get_color() return love.graphics.getColor() end
+
 function graphics.set_font(font)
 	love.graphics.setFont(font)
 end

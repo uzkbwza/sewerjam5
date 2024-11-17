@@ -26,6 +26,10 @@
 		"usersettings",
 		"audio",
 		"global_state",
-		"tilesets"
+		"tilesets",
+		"nativefs"
+	],
+	"Lua.diagnostics.disable": [
+		"undefined-field"
 	],
 }

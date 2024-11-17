@@ -30,6 +30,22 @@ function tabley.pop(t)
   return table.remove(t)
 end
 
+function table.list_has(t, value)
+    for i, v in ipairs(t) do
+		if v == value then 
+			return true
+		end
+	end
+end
+
+function table.search_list(t, value)
+    for i, v in ipairs(t) do
+		if v == value then 
+			return i
+		end
+	end
+end
+
 function tabley.is_empty(t)
 	local next = next
 	return next(t) == nil
@@ -127,6 +143,51 @@ function tabley.merged(t1, t2, overwrite)
 	tabley.merge(t, t2, overwrite)
 	return t
 end
+
+function tabley.serialize(t, indent, start)
+    if start == nil then start = true end
+    indent = indent or ""
+    local serialized = (start and "return " or "") .. "{\n"
+    local next_indent = indent .. "\t"
+    
+    for key, value in pairs(t) do
+        local formatted_key
+        if type(key) == "string" then
+            formatted_key = string.format("[%q]", key)
+        else
+            formatted_key = "[" .. tostring(key) .. "]"
+        end
+        
+        if type(value) == "table" then
+            local format_func = value.__table_format
+            if format_func then
+				local output = (format_func(value, next_indent))
+				if type(output) == "string" then
+					serialized = serialized .. next_indent .. formatted_key .. " = " .. (output) .. ",\n"
+				elseif type(output) == "table" then
+                    serialized = serialized ..
+                        next_indent .. formatted_key .. " = " .. tabley.serialize(output, next_indent, false) .. ",\n"
+				else 
+                    serialized = serialized .. next_indent .. formatted_key .. " = " .. tostring(output) .. ",\n"
+				end
+			else
+				serialized = serialized .. next_indent .. formatted_key .. " = " .. tabley.serialize(value, next_indent, false) .. ",\n"
+			end
+        elseif type(value) == "string" then
+            serialized = serialized .. next_indent .. formatted_key .. " = " .. string.format("%q", value) .. ",\n"
+        else
+            serialized = serialized .. next_indent .. formatted_key .. " = " .. tostring(value) .. ",\n"
+        end
+    end
+
+    serialized = serialized .. indent .. "}"
+    return serialized
+end
+
+function tabley.deserialize(str) 
+	return assert(loadstring(str))()
+end
+
 
 function tabley.fast_remove_at(t, index)
 	local length = #t

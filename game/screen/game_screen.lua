@@ -9,6 +9,9 @@ function Screen:new(x, y, viewport_size_x, viewport_size_y)
     self.blocks_render = true
     self.blocks_input = true
 
+    self.screen_below = nil
+	self.screen_above = nil
+
 	self.worlds = {}
 
     self:add_sequencer()

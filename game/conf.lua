@@ -37,7 +37,7 @@ local conf = {
 		240,
 		160
 	),
-	display_scale = 3,
+	display_scale = 5,
 
 	-- delta
 	use_fixed_delta = false,
@@ -165,10 +165,10 @@ function love.conf(t)
 
 	t.window.title          = "Untitled"
 	t.window.icon           = nil
-	-- t.window.width          = conf.viewport_size.x * conf.display_scale
-    -- t.window.height         = conf.viewport_size.y * conf.display_scale
-    t.window.width          = 1280
-	t.window.height         = 720
+	t.window.width          = conf.viewport_size.x * conf.display_scale
+    t.window.height         = conf.viewport_size.y * conf.display_scale
+    -- t.window.width          = 1280
+	-- t.window.height         = 720
 	t.window.borderless     = false
 	t.window.resizable      = true
 	t.window.minwidth       = conf.viewport_size.x

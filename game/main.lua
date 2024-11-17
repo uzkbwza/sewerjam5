@@ -6,6 +6,8 @@ rng = require "lib.rng"
 gametime = require "time"
 global_state = require "global_state"
 tilesets = require "tile.tilesets"
+nativefs = require "lib.nativefs"
+binser = require "lib.binser"
 
 
 GameObject = require "obj.game_object"
@@ -205,4 +207,8 @@ end
 
 function love.mousemoved(x, y, dx, dy, istouch)
 	input.mouse_moved(x, y, dx, dy, istouch)
+end
+
+function love.wheelmoved(x, y)
+	input.mouse_wheel_moved(x, y)
 end

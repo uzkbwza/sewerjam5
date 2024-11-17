@@ -10,12 +10,15 @@ input.joysticks = {}
 input.generated_action_names = {}
 
 input.mouse = {
+	prev_wheel = Vec2(0, 0),
 	prev_pos = Vec2(0, 0),
 	pos = Vec2(0, 0),
 	dxy = Vec2(0, 0),
 	lmb = nil,
 	mmb = nil,
-	rmb = nil,
+    rmb = nil,
+    wheel = Vec2(0, 0),
+	dxy_wheel = Vec2(0, 0),
 	is_touch = false,
 }
 
@@ -26,7 +29,8 @@ input.signals = {
 	key_released = Signal(),
 	mouse_pressed = Signal(),
 	mouse_released = Signal(),
-	mouse_moved = Signal(),
+    mouse_moved = Signal(),
+	mouse_wheel_moved = Signal(),
 }
 
 function input.load()
@@ -278,8 +282,12 @@ function input.process(table)
 	
 	input.mouse.dxy.x = input.mouse.pos.x - input.mouse.prev_pos.x
 	input.mouse.dxy.y = input.mouse.pos.y - input.mouse.prev_pos.y
+	
 	input.mouse.prev_pos.x = input.mouse.pos.x
-	input.mouse.prev_pos.y = input.mouse.pos.y
+    input.mouse.prev_pos.y = input.mouse.pos.y
+
+    input.mouse.prev_wheel.x = input.mouse.wheel.x
+	input.mouse.prev_wheel.y = input.mouse.wheel.y
 
     -- if input.mouse.dxy.x ~= 0 or input.mouse.dxy.y ~= 0 then
 	-- 	print(input.mouse.dxy)
@@ -383,6 +391,12 @@ function input.mouse_moved(x, y, dxy, dy, istouch)
 	end
 	input.mouse.is_touch = istouch
 
+end
+
+function input.mouse_wheel_moved(dx, dy)
+	input.mouse.wheel.x = dx
+    input.mouse.wheel.y = dy
+	input.signals.mouse_wheel_moved:emit(dx, dy)
 end
 
 return input

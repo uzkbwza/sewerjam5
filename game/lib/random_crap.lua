@@ -16,11 +16,36 @@ function seconds_to_frames(n)
 	return n * 60
 end
 
-function flood_fill(x, y, fill, check_solid)
-	local stack = { Vec2(x, y) }
+function xy_to_id(x, y, width)
+    return ((y - 1) * width + (x - 1)) + 1
+end
+
+function id_to_xy(id, width)
+	local x = (id - 1) % width + 1
+	local y = math.floor((id - 1) / width) + 1
+	return x, y
+end
+
+function flood_fill(x, y, fill, check_solid, force_first)
+    local stack = { Vec2(x, y) }
+	if force_first then
+		local started = false
+        while not table.is_empty(stack) do
+            local coord = table.pop_front(stack)
+            if (not started) or (not check_solid(coord.x, coord.y)) then
+                started = true
+                fill(coord.x, coord.y)
+                table.insert(stack, coord + Vec2(-1, 0))
+                table.insert(stack, coord + Vec2(1, 0))
+                table.insert(stack, coord + Vec2(0, -1))
+                table.insert(stack, coord + Vec2(0, 1))
+            end
+        end
+		return
+	end
 	while not table.is_empty(stack) do
 		local coord = table.pop_front(stack)
-		if not check_solid(coord.x, coord.y) then
+        if (not check_solid(coord.x, coord.y)) then
 			fill(coord.x, coord.y)
 			table.insert(stack, coord + Vec2(-1, 0))
 			table.insert(stack, coord + Vec2(1, 0))

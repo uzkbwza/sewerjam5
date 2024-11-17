@@ -627,6 +627,12 @@ function vec2_distance_squared_table(a, b)
     return dx * dx + dy * dy
 end
 
+function vec2_snap_angle(x, y, step)
+    local angle = vec2_angle(x, y)
+	local magnitude = vec2_magnitude(x, y)
+	return vec2_from_polar(magnitude, step * math.floor((angle + step / 2) / step))
+end
+
 function vec2_to_polar(x, y)
     local r = vec2_magnitude(x, y)
     local theta = vec2_angle(x, y)

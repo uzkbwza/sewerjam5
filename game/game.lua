@@ -27,12 +27,18 @@ function game.pop_deferred(screen)
 end
 
 function game.push_screen(screen)
-	screen = game.screen_from_name(screen)
-	table.push_front(game.screen_stack, screen)
+    screen = game.screen_from_name(screen)
+    if table[1] then
+        table[1].screen_above = screen
+		screen.screen_below = table[1]
+	end
+    table.push_front(game.screen_stack, screen)
+
 	game.init_screen(screen)
+	
+	collectgarbage()
+
 end
-
-
 
 function game.init_screen(screen)
 	screen.screen_pushed:connect(game.push_deferred)
@@ -47,7 +53,9 @@ function game.replace_screen(screen, new)
 			
 			local new_screen = game.screen_from_name(new)
 			game.screen_stack[i] = new_screen
-			game.init_screen(new_screen)
+            game.init_screen(new_screen)
+			collectgarbage()
+			return
 		end
 	end
 end
@@ -55,9 +63,13 @@ end
 
 function game.pop_screen()
 	local screen = table.pop_front(game.screen_stack)
-	if screen then
-		screen:exit_shared()
-	end
+    if screen then
+        screen:exit_shared()
+    end
+    if game.screen_stack[1] then
+        game.screen_stack[1].screen_above = nil
+    end
+	collectgarbage()
 	return screen
 end
 

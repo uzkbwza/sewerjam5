@@ -1,7 +1,6 @@
 
 Sequencer = Object:extend()
 
-
 -- Example usage: 
 --[[
 s:start(function()
@@ -143,15 +142,15 @@ function Sequencer:resume(chain)
 end
 
 function Sequencer:wait_for(func)
-	if Object.is(func, Signal) then
-		self:suspend(self.current_chain)
-		if Object.is(func, GameObjectSignal) then 
-			func:connect(nil, function() self:resume(self.current_chain) end, true)
-		else
-			func:connect(function() self:resume(self.current_chain) end, true)
-		end
-		return
-	end
+	-- if Object.is(func, Signal) then
+		-- self:suspend(self.current_chain)
+		-- if Object.is(func, GameObjectSignal) then 
+		-- 	func:connect(nil, function() self:resume(self.current_chain) end, true)
+		-- else
+		-- func:connect(function() self:resume(self.current_chain) end, true)
+		-- end
+		-- return
+	-- end
 	while not func() do
 		coroutine.yield()
 	end

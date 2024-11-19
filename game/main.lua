@@ -8,10 +8,10 @@ global_state = require "global_state"
 tilesets = require "tile.tilesets"
 nativefs = require "lib.nativefs"
 binser = require "lib.binser"
+signal = require "signal"
 
 
 GameObject = require "obj.game_object"
-GameObjectSignal = require "obj.game_object_signal"
 Screen = require "screen.game_screen"
 World = require "world.game_world"
 Effect = require "fx.effect"
@@ -43,7 +43,8 @@ function love.run()
 	-- We don't want the first frame's dt to include time taken by love.load.
 	if love.timer then love.timer.step() end
 
-	local dt = 0
+    local dt = 0
+	local min_delta = 1 / conf.max_fps
 
     local debug_printed_yet = false
 	
@@ -90,7 +91,7 @@ function love.run()
 		gametime.time = gametime.time + delta_frame
         gametime.ticks = floor(gametime.time)
 		
-        if gametime.ticks % 120 == 0 then
+        if gametime.ticks % 300 == 0 then
             if debug.enabled and not debug_printed_yet then
                 local fps = love.timer.getFPS()
 				if conf.use_fixed_delta and fps > conf.fixed_tickrate then
@@ -107,9 +108,9 @@ function love.run()
         -- collectgarbage()
         local frame_end = love.timer.getTime()
         local frame_length = frame_end - frame_start
-		if frame_length < conf.min_delta_seconds then
-            love.timer.sleep(conf.min_delta_seconds - frame_length)
-			-- print(conf.min_delta_seconds)
+
+		if frame_length < min_delta  then
+            love.timer.sleep(min_delta - frame_length)
 		end
 	end
 	
@@ -122,12 +123,13 @@ function love.load()
 end
 
 function love.update(dt)
-	if gametime.ticks % 2 == 0 then 
+	if gametime.ticks % 5 == 0 then 
 		-- dbg("ticks", gametime.ticks)
 		local fps = love.timer.getFPS()
         if conf.use_fixed_delta and fps > conf.fixed_tickrate then
             fps = conf.fixed_tickrate
         end
+		
 		if debug.enabled then
 			dbg("fps", fps)
 			dbg("memory use (kB)", floor(collectgarbage("count")))
@@ -135,7 +137,8 @@ function love.update(dt)
 	end
 	
 	if debug.enabled and input.debug_count_memory_pressed then 
-		table.pretty_print(debug.type_count())
+		table.pretty_print(signal)
+        table.pretty_print(debug.type_count())
 	end
 	input.update(dt)
 	game.update(dt)
@@ -146,9 +149,7 @@ function love.update(dt)
 		dbg("primary", input.primary)
 		dbg("secondary", input.secondary)
 	end
-	-- dbg("time", gametime.time)
-	-- dbg("ticks", gametime.ticks)
-	-- dbg("frames", gametime.frames)
+	-- collectgarbage()
 
 end
 

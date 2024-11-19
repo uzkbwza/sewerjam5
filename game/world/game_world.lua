@@ -2,6 +2,7 @@ local Camera = require("obj.camera")
 local bump = require("lib.bump")
 local shash = require("lib.shash")
 local sti = require("lib.sti")
+local GameMap = require "map.gamemap"
 
 -- represents an area of the game where objects can exist in space and interact with each other
 local World = GameObject:extend()
@@ -82,10 +83,6 @@ end
 function World:update_shared(dt)
     World.super.update_shared(self, dt)
 	self:update(dt)
-	
-	if self.map then
-		self.map:update(dt)
-	end
 
     local update_objects = self:get_update_objects()
 
@@ -102,48 +99,56 @@ function World:update_shared(dt)
         obj:update_shared(dt)
     end
 
-
 end
 
 function World:update(dt)
-
 end
 
 function World:add_to_draw_grid(obj)
 	local x, y, w, h = obj:get_draw_rect()
     self.draw_grid:add(obj, x, y, w, h)
-    
-	if obj.moved then
-        obj.moved:connect_named(self, function()
+
+	if signal.get(obj, "moved") then
+        signal.connect(obj, "moved", self, "update_draw_grid", function()
             local x, y, w, h = obj:get_draw_rect()
             self.draw_grid:update(obj, x, y, w, h)
-        end, "update_draw_grid")
+        end)
     end
 	
-    if obj.removed then
-        obj.removed:connect_named(self, function()
-            self:remove_from_draw_grid(obj)
-        end, "remove_draw_grid", true)
+	if signal.get(obj, "removed") then
+        signal.connect(obj, "removed", self, "remove_from_draw_grid", nil, true)
     end
 	
 end
 
 function World:remove_from_draw_grid(obj)
 	self.draw_grid:remove(obj)
-	obj.moved:disconnect("update_draw_grid")
+	signal.disconnect(obj, "moved", self, "update_draw_grid")
 end
 
 function World:get_objects_in_draw_rect(x, y, w, h)
+    self.draw_object_table = self.draw_object_table or {}
+	table.clear(self.draw_object_table)
+    self.add_to_draw_cache = self.add_to_draw_cache or function(obj)
+        table.insert(self.draw_object_table, obj)
+	end
+    self.draw_grid:each(x, y, w, h, self.add_to_draw_cache)
+    return self.draw_object_table
 
-    return self.draw_grid:query(x, y, w, h)
 end
 
 function World:get_visible_objects()
-	return self:get_objects_in_draw_rect(-self.camera_offset.x, -self.camera_offset.y, self.viewport_size.x, self.viewport_size.y)
+    return self:get_objects_in_draw_rect(-self.camera_offset.x, -self.camera_offset.y, self.viewport_size.x,
+    self.viewport_size.y)
+end
+
+function World:get_draw_rect()
+	return -self.camera_offset.x, -self.camera_offset.y, self.viewport_size.x, self.viewport_size.y
 end
 
 function World:draw()
-
+	
+	-- TODO: this is generating lots of garbage. fix it
 	local culled_objects = self:get_visible_objects()
 
 	if self.draw_sort then
@@ -175,26 +180,26 @@ function World:draw()
 end
 
 function World:get_camera_offset()
-    local offset = Vec2(0, 0)
+    local offset_x, offset_y = 0, 0
     local zoom = 1.0
 
     if self.follow_camera then
         zoom = self.camera.zoom
         self.camera.viewport_size = self.viewport_size
-        offset = self:get_object_draw_position(self.camera)
+        offset_x, offset_y = self:get_object_draw_position(self.camera)
 
         if self.camera.following then
-            offset = self:get_object_draw_position(self.camera.following)
+            offset_x, offset_y = self:get_object_draw_position(self.camera.following)
         end
 
-        offset = self.camera:clamp_to_limits(offset)
+        offset_x, offset_y = self.camera:clamp_to_limits(offset_x, offset_y)
 
-        offset.y = -offset.y + (self.viewport_size.y / 2) / zoom
-        offset.x = -offset.x + (self.viewport_size.x / 2) / zoom
+        offset_y = -offset_y + (self.viewport_size.y / 2) / zoom
+        offset_x = -offset_x + (self.viewport_size.x / 2) / zoom
     end
 
 	-- return Vec2(0, 0), 1
-    return offset, zoom
+    return offset_x, offset_y, zoom
 end
 
 function World:draw_shared()
@@ -207,9 +212,11 @@ function World:draw_shared()
     end
 
 	
-	local offset, zoom = self:get_camera_offset()
+	local offset_x, offset_y, zoom = self:get_camera_offset()
 
-    self.camera_offset = Vec2(floor(offset.x), floor(offset.y))
+    self.camera_offset = self.camera_offset or Vec2()
+    self.camera_offset.x = floor(offset_x)
+	self.camera_offset.y = floor(offset_y)
     -- self.camera_offset.x = floor(self.camera_offset.x)
     -- self.camera_offset.y = floor(self.camera_offset.y)
 
@@ -219,56 +226,69 @@ function World:draw_shared()
     graphics.scale(zoom, zoom)
     -- graphics.translate((offset.x), (offset.y))
 	
-    graphics.translate(offset.x, offset.y)
+    graphics.translate(offset_x, offset_y)
 	
     if self.map then
-        self.map:draw(offset.x, offset.y, zoom, zoom)
-		if debug.can_draw() then
-			self.map:bump_draw(0, 0)
-		end
+        self.map:draw()
+
         -- print(self.map.layers)
     end
-	
+
+	if self.bump_world and debug.can_draw() then
+		self:bump_draw()
+	end
 
 	self:draw()
 
-	
-
-    -- graphics.draw(self.canvas, self.pos.x, self.pos.y, 0, self.viewport_size.x, self.viewport_size.y)
     graphics.pop()
-
 end
 
-function World:load_tile_map(map_name)
-    local path = "map/maps/" .. map_name .. ".lua"
-    local do_bump = self.bump_world ~= nil
-    local do_box = self.box_world ~= nil
-	
-    local t = {}
-    if do_bump then
-		table.insert(t, "bump")
-    end
+function World.bump_draw_filter(obj)
+    if Object.is(obj, GameObject) then return false end
 
-    if do_box then
-		table.insert(t, "box2d")
+	if type(obj) == "table" and obj.collision_rect then
+		return true
 	end
-	
-    local map = sti(path, t)
 
-	self.map = map
-	
-    if do_bump then
-        map:bump_init(self.bump_world)
-    end
+	return false
+end
 
-	if do_box then
-		map:box2d_init(self.box_world)
+function World:bump_draw()
+	-- for _, object in self.bump_world do 
+    local x, y, w, h = self:get_draw_rect()
+	self.bump_draw_query_table = self.bump_draw_query_table or {}
+	local objects = self.bump_world:queryRect(x, y, w, h, World.bump_draw_filter, self.bump_draw_query_table)
+    for _, object in ipairs(objects) do
+		graphics.draw_collision_box(object.collision_rect, palette.blue)
 	end
-	
+	-- end
+end
+
+function World:enter_shared()
+    World.super.enter_shared(self)
+	self.camera:move_to(self.viewport_size.x / 2, self.viewport_size.y / 2)
+end
+
+function World:load_game_map(map_name, tile_process_func)
+	self.map = GameMap.load(map_name)
+    if self.bump_world then self.map:bump_init(self.bump_world) end
+    self.map:build(tile_process_func or self.tile_process_func)
+	self:process_map_objects(self.map.objects)
+end
+
+function World:process_map_objects(objects)
+	for _, object_data in ipairs(objects) do
+        local x, y, z, object_name = unpack(object_data)
+		self:process_map_object(x, y, z, object_name)
+	end
+end
+
+function World:process_map_object(x, y, z, object_name)
+	print("unprocessed object!", x, y, z, object_name)
 end
 
 function World:get_object_draw_position(obj)
-    return obj.pos:clone()
+    return obj.pos.x, obj.pos.y
 end
 
 function World:spawn_object(obj)
@@ -302,33 +322,35 @@ function World:add_object(obj)
 
     self:add_to_update_tables(obj)
 
-    if obj.visibility_changed then
-        obj.visibility_changed:connect(nil, function()
+    if signal.get(obj, "visibility_changed") then
+        signal.connect( obj, "visibility_changed", self, "on_object_visibility_changed", (function()
             if obj.visible then
                 self:add_to_draw_grid(obj)
             else
 				self:remove_from_draw_grid(obj)
             end
-        end)
+        end))
     end
 
-    if obj.update_changed then
-        obj.update_changed:connect(nil, function()
+    if signal.get(obj, "update_changed") then
+        signal.connect( obj, "update_changed", self, "on_object_update_changed", (function()
             if not obj.static then
                 add_to_array(self.update_objects, self.update_indices, obj)
             else
                 remove_from_array(self.update_objects, self.update_indices, obj)
             end
-        end)
+        end))
     end
 
-    obj.destroyed:connect(nil, function() self:remove_object(obj) end, true)
+    signal.connect(obj, "destroyed", self, "remove_object", nil, true)
+	self:destroy_when_i_am_destroyed(obj)
 
     if obj.is_bump_object then
         obj:set_bump_world(self.bump_world)
     end
 
     obj:enter_shared()
+
     if obj.children then
         for _, child in ipairs(obj.children) do
             child:tpv_to(obj.pos)
@@ -351,6 +373,8 @@ function World:add_to_update_tables(obj)
 end
 
 function World:remove_object(obj)
+	if not obj then return end
+
 	if not obj.world == self then
 		return
 	end
@@ -364,7 +388,7 @@ function World:remove_object(obj)
 		self.bump_world:remove(obj)
 		obj:set_bump_world(nil)
 	end
-	obj.removed:emit()
+	obj:emit_signal("removed")
 	obj:prune_signals()
 end
 

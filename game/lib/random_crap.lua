@@ -5,7 +5,38 @@ function UUID()
 		r = (x == "x") and (r + 1) or (r % 4) + 9
 		return ("0123456789abcdef"):sub(r, r)
 	end
-	return (("xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"):gsub("[xy]", fn))
+	return (("xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx"):gsub("[xy]", fn))
+end
+
+-- Removes all references to a module.
+-- Do not call unrequire on a shared library based module unless you are 100% confidant that nothing uses the module anymore.
+-- @param m Name of the module you want removed.
+-- @return Returns true if all references were removed, false otherwise.
+-- @return If returns false, then this is an error message describing why the references weren't removed.
+function unrequire(m)
+    package.loaded[m] = nil
+    _G[m] = nil
+
+    -- Search for the shared library handle in the registry and erase it
+    local registry = debug.getregistry()
+    local nMatches, mKey, mt = 0, nil, registry["_LOADLIB"]
+
+    for key, ud in pairs(registry) do
+        if type(key) == "string" and string.find(key, "LOADLIB: .*" .. m) and type(ud) == "userdata" and getmetatable(ud) == mt then
+            nMatches = nMatches + 1
+            if nMatches > 1 then
+                return false, "More than one possible key for module '" .. m .. "'. Can't decide which one to erase."
+            end
+
+            mKey = key
+        end
+    end
+
+    if mKey then
+        registry[mKey] = nil
+    end
+
+    return true
 end
 
 function frames_to_seconds(n)
@@ -138,6 +169,10 @@ function bresenham_los(x0, y0, x1, y1, points)
 end
 
 function bresenham_line(x0, y0, x1, y1, callback)
+    x0 = math.floor(x0)
+    y0 = math.floor(y0)
+    x1 = math.floor(x1)
+	y1 = math.floor(y1)
     local points = {}
     local count = 0
     if callback then
@@ -150,5 +185,17 @@ function bresenham_line(x0, y0, x1, y1, callback)
         return points, result
     end
     bresenham_los(x0, y0, x1, y1, points)
-	return points
+    return points
 end
+
+function xassert(a, ...)
+	if a then return a, ... end
+	local f = ...
+	if type(f) == ___f then
+	  local args = {...}
+	  table.remove(args, 1)
+	  error(f(unpack(args)), 2)
+	else
+	  error(f or "assertion failed!", 2)
+	end
+  end

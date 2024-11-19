@@ -27,7 +27,9 @@
 		"audio",
 		"global_state",
 		"tilesets",
-		"nativefs"
+		"nativefs",
+		"binser",
+		"signal"
 	],
 	"Lua.diagnostics.disable": [
 		"undefined-field"

@@ -68,6 +68,15 @@ local bump = {
 	return 'slide'
   end
   
+  local function reuseTable(t)
+    if t then
+        table.clear(t)
+        return t
+    end
+	return {}
+  end
+
+
   ------------------------------------------
   -- Rectangle functions
   ------------------------------------------
@@ -538,16 +547,17 @@ local bump = {
   end
   
   
-  --- Query methods
+--- Query methods
+---
 
-  function World:queryRect(x,y,w,h, filter)
+  function World:queryRect(x,y,w,h, filter, reuse_table)
   
 	assertIsRect(x,y,w,h)
   
 	local cl,ct,cw,ch = grid_toCellRect(self.cellSize, x,y,w,h)
 	local dictItemsInCellRect = getDictItemsInCellRect(self, cl,ct,cw,ch)
   
-	local items, len = {}, 0
+    local items, len = reuseTable(reuse_table), 0
   
 	local rect
 	for item,_ in pairs(dictItemsInCellRect) do
@@ -563,12 +573,12 @@ local bump = {
 	return items, len
   end
   
-  function World:queryPoint(x,y, filter)
+  function World:queryPoint(x,y, filter, reuse_table)
 	local cx,cy = self:toCell(x,y)
 	local dictItemsInCellRect = getDictItemsInCellRect(self, cx,cy,1,1)
   
-	local items, len = {}, 0
-  
+	local items, len = reuseTable(reuse_table), 0
+
 	local rect
 	for item,_ in pairs(dictItemsInCellRect) do
 	  rect = self.rects[item]
@@ -583,9 +593,9 @@ local bump = {
 	return items, len
   end
   
-  function World:querySegment(x1, y1, x2, y2, filter)
+  function World:querySegment(x1, y1, x2, y2, filter, reuse_table)
 	local itemInfo, len = getInfoAboutItemsTouchedBySegment(self, x1, y1, x2, y2, filter)
-	local items = {}
+	local items = reuseTable(reuse_table)
 	for i=1, len do
 	  items[i] = itemInfo[i].item
 	end

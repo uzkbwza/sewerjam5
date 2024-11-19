@@ -12,14 +12,16 @@ function Screen:new(x, y, viewport_size_x, viewport_size_y)
     self.screen_below = nil
 	self.screen_above = nil
 
+    self.game = nil
+	
 	self.worlds = {}
 
     self:add_sequencer()
     self:add_elapsed_time()
     self:add_elapsed_ticks()
 
-    self.screen_pushed = Signal()
-    self.screen_popped = Signal()
+    self:add_signal("screen_pushed")
+    self:add_signal("screen_popped")
 
     self.interp_fraction = 0
 
@@ -43,6 +45,9 @@ end
 
 function Screen:add_world(world)
     table.insert(self.worlds, world)
+	world.viewport_size = self.viewport_size
+    self:destroy_when_i_am_destroyed(world)
+	world:enter_shared()
     return world
 end
 
@@ -105,11 +110,11 @@ function Screen:exit()
 end
 
 function Screen:push(screen_name)
-    self.screen_pushed:emit(screen_name)
+    self:emit_signal("screen_pushed", screen_name)
 end
 
 function Screen:pop()
-    self.screen_popped:emit(self)
+    self:emit_signal("screen_popped", self)
 end
 
 function Screen:get_input_table()

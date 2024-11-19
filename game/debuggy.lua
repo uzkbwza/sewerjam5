@@ -12,13 +12,19 @@ function debuggy.printlines(line, x, y)
 	if not debuggy.can_draw() then
 		return
 	end
-	local counter = 0
+    local counter = 0
+
+	
 	for k, v in pairs(debuggy.lines) do
-		if v == "" then
-			graphics.print(k, x, counter * 12)
+        if v == "" then
+
+			graphics.print_outline(palette.black, k, x, counter * 12)
 			v = "nil"
 		else
-			graphics.print(k .. ": " .. tostring(v), x, counter * 12)
+			local string = string.format("%s: %s", k, v)
+
+            graphics.print_outline(palette.black, string, x, counter * 12)
+
 		end
 
 		counter = counter + 1

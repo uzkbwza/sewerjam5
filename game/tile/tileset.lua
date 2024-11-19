@@ -2,7 +2,7 @@ local Tile = require "tile.tile"
 
 local Tileset = Object:extend()
 
-function Tileset:new(texture, tile_width, tile_height)
+function Tileset:new(texture, tile_width, tile_height, tile_data)
     self.texture = texture
     self.tile_width = tile_width
     self.tile_height = tile_height
@@ -18,9 +18,28 @@ function Tileset:new(texture, tile_width, tile_height)
     for y = 1, self.tile_count_y do
         for x = 1, self.tile_count_x do
             local quad = graphics.new_quad((x - 1) * tile_width, (y - 1) * tile_height, tile_width, tile_height, tex_width, tex_height)
-            self.tiles[self:xy_to_id(x, y)] = Tile(quad, texture)
+			local id = self:xy_to_id(x, y)
+			local tile = Tile(self, id, quad, texture)
+			self.tiles[id] = tile
         end
     end
+
+
+	if tile_data and tile_data.data then
+		local data_table = {}
+        for key, list in pairs(tile_data.data) do
+            for value, ids in pairs(list) do
+                for _, id in ipairs(ids) do
+                    data_table[id] = data_table[id] or {
+                    }
+                    data_table[id][key] = value
+                end
+            end
+        end
+        for id, data in pairs(data_table) do
+			self:set_tile_data(data, id)
+		end
+	end
 
 	self.tile_count = #self.tiles
 end
@@ -35,8 +54,8 @@ function Tileset:id_to_xy(id)
 	return x, y
 end
 
-function Tileset:set_tile_data(x, y, data)
-	local id = self:xy_to_id(x, y)
+function Tileset:set_tile_data(data, x, y)
+	local id = y and self:xy_to_id(x, y) or x
 	local tile = self.tiles[id]
     assert(self.tiles[id] ~= nil, "tile doesn't exist")
 	tile.data = data

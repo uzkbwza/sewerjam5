@@ -23,14 +23,7 @@ input.mouse = {
 }
 
 input.signals = {
-	joystick_pressed = Signal(),
-	joystick_released = Signal(),
-	key_pressed = Signal(),
-	key_released = Signal(),
-	mouse_pressed = Signal(),
-	mouse_released = Signal(),
-    mouse_moved = Signal(),
-	mouse_wheel_moved = Signal(),
+
 }
 
 function input.load()
@@ -43,6 +36,14 @@ function input.load()
 
 	input.joystick_held = {}
 
+	signal.register(input, "joystick_pressed")
+	signal.register(input, "joystick_released")
+	signal.register(input, "key_pressed")
+	signal.register(input, "key_released")
+	signal.register(input, "mouse_pressed")
+	signal.register(input, "mouse_released")
+    signal.register(input, "mouse_moved")
+	signal.register(input, "mouse_wheel_moved")
 
 	input.dummy.mapping = conf.input_actions
 	input.dummy.vectors = conf.input_vectors
@@ -303,7 +304,7 @@ end
 function input.keypressed(key)
 	if input.keyboard_held[key] == nil then
 		input.keyboard_held[key] = gametime.frames
-		input.signals.key_pressed:emit(key)
+		signal.emit(input, "key_pressed", key)
 	end
 
 end
@@ -314,13 +315,13 @@ function input.keyreleased(key)
 	else
 		input.keyboard_held[key] = nil
 	end
-	input.signals.key_released:emit(key)
+	signal.emit(input, "key_released", key)
 end
 
 function input.joystick_pressed(joystick, button)
 	if input.joystick_held[button] == nil then
 		input.joystick_held[button] = gametime.frames
-		input.signals.joystick_pressed:emit(joystick, button)
+		signal.emit(input, "joystick_pressed", joystick, button)
 	end
 end
 
@@ -330,7 +331,7 @@ function input.joystick_released(joystick, button)
 	else
 		input.joystick_held[button] = nil
 	end
-	input.signals.joystick_released:emit(joystick, button)
+	signal.emit(input, "joystick_released", joystick, button)
 
 end
 
@@ -338,22 +339,21 @@ function input.mouse_pressed(x, y, button)
 	if button == 1 then
 		if input.mouse.lmb == nil then
 			input.mouse.lmb = gametime.frames
-			input.signals.mouse_pressed:emit(x, y, button)
+			signal.emit(input, "mouse_pressed", x, y, button)
 		end
 	end
 	if button == 2 then
 		if input.mouse.rmb == nil then
 			input.mouse.rmb = gametime.frames
-			input.signals.mouse_pressed:emit(x, y, button)
+			signal.emit(input, "mouse_pressed", x, y, button)
 		end
 	end
 	if button == 3 then
 		if input.mouse.mmb == nil then
 			input.mouse.mmb = gametime.frames
-			input.signals.mouse_pressed:emit(x, y, button)
+			signal.emit(input, "mouse_pressed", x, y, button)
 		end
 	end
-	
 end
 
 function input.mouse_released(x, y, button)
@@ -378,7 +378,8 @@ function input.mouse_released(x, y, button)
 			input.mouse.mmb = nil
 		end
 	end
-	input.signals.mouse_released:emit(x, y, button)
+	signal.emit(input, "mouse_released", x, y, button)
+
 end
 
 function input.mouse_moved(x, y, dxy, dy, istouch)
@@ -396,7 +397,7 @@ end
 function input.mouse_wheel_moved(dx, dy)
 	input.mouse.wheel.x = dx
     input.mouse.wheel.y = dy
-	input.signals.mouse_wheel_moved:emit(dx, dy)
+	signal.emit(input, "mouse_wheel_moved", dx, dy)
 end
 
 return input

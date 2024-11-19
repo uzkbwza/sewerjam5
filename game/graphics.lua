@@ -25,6 +25,18 @@ local graphics = {
 
 graphics = setmetatable(graphics, { __index = love.graphics })
 
+local window_width, window_height = 0, 0
+local window_size = Vec2(window_width, window_height)
+local viewport_size = Vec2(conf.viewport_size.x, conf.viewport_size.y)
+local max_width_scale = 1
+local max_height_scale = 1
+local viewport_pixel_scale = 1
+local canvas_size = viewport_size * viewport_pixel_scale
+local canvas_pos = window_size / 2 - (canvas_size) / 2
+local viewport_size_shader = { 0,  0} 
+local canvas_pos_shader = { 0, 0 }
+local canvas_size_shader = { 0, 0 }
+
 function graphics.load_textures(texture_atlas)
 	texture_atlas = texture_atlas or false
 
@@ -202,14 +214,22 @@ function graphics.draw_loop()
 	local process = usersettings.pixel_perfect and math.floor or identity_function
 
 	-- TODO: stop generating garbage with vec2s
-	local window_width, window_height = graphics.get_dimensions()
-	local window_size = Vec2(window_width, window_height)
-	local viewport_size = Vec2(conf.viewport_size.x, conf.viewport_size.y)
-	local max_width_scale = process(window_size.x / viewport_size.x)
-	local max_height_scale = process(window_size.y / viewport_size.y)
-	local viewport_pixel_scale = process(math.min(max_width_scale, max_height_scale))
-	local canvas_size = viewport_size * viewport_pixel_scale
-	local canvas_pos = window_size / 2 - (canvas_size) / 2
+	window_width, window_height = graphics.get_dimensions()
+    window_size.x = window_width
+	window_size.y = window_height
+    viewport_size.x = conf.viewport_size.x
+	viewport_size.y = conf.viewport_size.y
+	max_width_scale = process(window_size.x / viewport_size.x)
+	max_height_scale = process(window_size.y / viewport_size.y)
+	viewport_pixel_scale = process(math.min(max_width_scale, max_height_scale))
+	canvas_size = viewport_size * viewport_pixel_scale
+    canvas_pos = window_size / 2 - (canvas_size) / 2
+    viewport_size_shader[1] = viewport_size.x
+    viewport_size_shader[2] = viewport_size.y
+    canvas_pos_shader[1] = canvas_pos.x
+    canvas_pos_shader[2] = canvas_pos.y
+    canvas_size_shader[1] = canvas_size.x
+	canvas_size_shader[2] = canvas_size.y
 
 	graphics.main_canvas_start_pos = canvas_pos
 	graphics.main_canvas_size = canvas_size
@@ -230,7 +250,6 @@ function graphics.draw_loop()
 			-- pcall(graphics.shader.update)
 		end
 
-		local canvas_pos_x, canvas_pos_y = canvas_pos.x, canvas_pos.y
 
         for i, shader_table in ipairs(graphics.screen_shaders) do
             local shader = shader_table.shader
@@ -251,13 +270,13 @@ function graphics.draw_loop()
 			graphics.set_canvas(shader_canvas)
 
 			if shader:hasUniform("viewport_size") then
-				shader:send("viewport_size", { viewport_size.x, viewport_size.y })
+				shader:send("viewport_size", viewport_size_shader )
 			end
 			if shader:hasUniform("canvas_size") then
-				shader:send("canvas_size", { canvas_size.x, canvas_size.y })
+				shader:send("canvas_size", canvas_size_shader )
 			end
 			if shader:hasUniform("canvas_pos") then
-				shader:send("canvas_pos", { canvas_pos_x, canvas_pos_y})
+				shader:send("canvas_pos", canvas_pos_shader )
 			end
 
             for arg, value in pairs(args) do
@@ -499,8 +518,8 @@ function graphics.rectangle(mode, x, y, width, height)
 	love.graphics.rectangle(mode, x, y, width, height)
 end
 
-function graphics.line(x1, y1, x2, y2)
-	love.graphics.line(x1, y1, x2, y2)
+function graphics.line(x1, y1, x2, y2, ...)
+	love.graphics.line(x1, y1, x2, y2, ...)
 end
 
 function graphics.polygon(mode, ...)
@@ -509,19 +528,51 @@ end
 
 function graphics.print(text, x, y, r, sx, sy, ox, oy, kx, ky)
 	graphics.push()
-	-- graphics.set_color(palette.black)
-	-- love.graphics.print(text, x+1, y + 1, r, sx, sy, ox, oy, kx, ky)
-	-- love.graphics.print(text, x-1, y - 1, r, sx, sy, ox, oy, kx, ky)
-	-- love.graphics.print(text, x+1, y - 1, r, sx, sy, ox, oy, kx, ky)
-	-- love.graphics.print(text, x-1, y + 1, r, sx, sy, ox, oy, kx, ky)
-	-- graphics.set_color(palette.white)
 
 	love.graphics.print(text, x, y, r, sx, sy, ox, oy, kx, ky)
 	graphics.pop()
 end
 
+function graphics.print_outline(outline_color, text, x, y, r, sx, sy, ox, oy, kx, ky)
+    graphics.push("all")
+    graphics.set_color(outline_color)
+    love.graphics.print(text, x + 1, y + 1, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x - 1, y - 1, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x + 1, y - 1, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x - 1, y + 1, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x + 1, y, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x - 1, y, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x, y + 1, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x, y - 1, r, sx, sy, ox, oy, kx, ky)
+    graphics.pop()
+    love.graphics.print(text, x, y, r, sx, sy, ox, oy, kx, ky)
+end
+
+function graphics.dashline(p1x, p1y, p2x, p2y, dash, gap)
+    local dy, dx = p2y - p1y, p2x - p1x
+    local an, st = math.atan2(dy, dx), dash + gap
+    local len    = math.sqrt(dx * dx + dy * dy)
+    local nm     = (len - dash) / st
+    graphics.push()
+    graphics.translate(p1x, p1y)
+    graphics.rotate(an)
+    for i = 0, nm do
+        graphics.line(i * st, 0, i * st + dash, 0)
+    end
+    graphics.line(nm * st, 0, nm * st + dash, 0)
+    graphics.pop()
+end
+ 
+function graphics.dashrect(x, y, w, h, dash, gap)
+	graphics.dashline(x, y, x + w, y, dash, gap)
+	graphics.dashline(x + w, y, x + w, y + h, dash, gap)
+	graphics.dashline(x + w, y + h, x, y + h, dash, gap)
+	graphics.dashline(x, y + h, x, y, dash, gap)
+end
+
 function graphics.draw_collision_box(rect, color, alpha)
-	love.graphics.setColor(color.r, color.g, color.b, alpha * 0.125)
+	alpha = alpha or 1
+	love.graphics.setColor(color.r, color.g, color.b, alpha * 0.5)
 	love.graphics.rectangle("fill", rect.x, rect.y, rect.width, rect.height)
 	love.graphics.setColor(color.r, color.g, color.b, alpha)
 	love.graphics.rectangle("line", rect.x, rect.y, rect.width, rect.height)

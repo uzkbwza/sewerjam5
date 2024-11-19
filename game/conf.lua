@@ -11,7 +11,6 @@ usersettings = require "usersettings"
 require "lib.mathy"
 require "lib.vector"
 require "lib.rect"
-require "lib.signal"
 require "lib.sequencer"
 require "lib.random_crap"
 require "lib.color"
@@ -34,16 +33,19 @@ end
 local conf = {
 	-- display
 	viewport_size = Vec2(
-		240,
-		160
+	240,
+	160
+        -- 384,
+		-- 216
+
 	),
-	display_scale = 5,
+	display_scale = 3,
 
 	-- delta
 	use_fixed_delta = false,
 	fixed_tickrate = 60,
     max_delta_seconds = 0.05,
-	min_delta_seconds = 0.0016,
+	max_fps = 500,
 	max_fixed_ticks_per_frame = 10,
 
 	-- input

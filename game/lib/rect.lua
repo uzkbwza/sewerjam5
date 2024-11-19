@@ -5,10 +5,11 @@ function Rect:new(x, y, width, height)
     self.x = x or 0
     self.y = y or 0
     self.width = width or 0
-    self.height = height or 0
+    self.height = height or width
 end
 
 function Rect.centered(x, y, width, height)
+	height = height or width
 	return Rect(x - width / 2, y - height / 2, width, height)
 end
 

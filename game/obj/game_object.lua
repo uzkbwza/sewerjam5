@@ -54,7 +54,7 @@ function GameObject:on_moved()
             v(self)
         end
     end
-	self.moved:emit()
+	self:emit_signal("moved")
 end
 
 function GameObject.dummy() end
@@ -127,13 +127,17 @@ end
 
 -- does not affect transform, only world traversal
 function GameObject:add_child(child)
-	if self.children == nil then
-		self.children = {}
-		self:add_update_function(GameObject.update_children)
-		child.destroyed:connect(nil, function() self:remove_child(child) end)
-	end
-	table.insert(self.children, child)
-	child.parent = self
+    if self.children == nil then
+        self.children = {}
+        self:add_update_function(GameObject.update_children)
+        signal.connect(child, "destroyed", self, "on_child_destroyed")
+    end
+    table.insert(self.children, child)
+    child.parent = self
+end
+
+function GameObject:on_child_destroyed(child)
+	self:remove_child(child)
 end
 
 function GameObject:remove_child(child)
@@ -184,7 +188,7 @@ function GameObject:hide()
 		return
 	end
 	self.visible = false
-	self.visibility_changed:emit()
+	self:emit_signal("visibility_changed")
 end
 
 function GameObject:show()
@@ -192,7 +196,7 @@ function GameObject:show()
 		return
 	end
 	self.visible = true
-	self.visibility_changed:emit()
+	self:emit_signal("visibility_changed")
 end
 
 
@@ -461,7 +465,7 @@ end
 
 function GameObject:set_update(on)
 	self.static = not on
-	self.update_changed:emit()
+	self:emit_signal("update_changed")
 end
 
 function GameObject:update(dt, ...)
@@ -580,24 +584,35 @@ function GameObject:debug_draw_bounds()
 end
 
 function GameObject:destroy()
+	if self.objects_to_destroy then
+		for _, v in pairs(self.objects_to_destroy) do
+			v:destroy()
+		end
+	end
 	self.is_destroyed = true
 	self:exit_shared()
 	if self.sequencer then
 		self.sequencer:destroy()
 	end
-	self.destroyed:emit()
+    self:emit_signal("destroyed", self)
+    signal.deregister_object(self)
+end
+
+function GameObject:destroy_when_i_am_destroyed(obj)
+    self.objects_to_destroy = self.objects_to_destroy or {}
+	table.insert(self.objects_to_destroy, obj)
 end
 
 function GameObject:prune_signals()
-	for _, v in pairs(self.signals) do 
-		v:prune()
-	end
+	-- for _, v in pairs(self.signals) do 
+	-- 	v:prune()
+	-- end
 end
 
 function GameObject:clear_signals()
-	for _, v in pairs(self.signals) do
-		v:clear()
-	end
+	-- for _, v in pairs(self.signals) do
+	-- 	v:clear()
+	-- end
 end
 
 function GameObject:enter_shared()
@@ -620,9 +635,11 @@ function GameObject:to_world(pos)
 end
 
 function GameObject:add_signal(signal_name)
-	self[signal_name] = GameObjectSignal(self)
-	self.signals = self.signals or {}
-	table.insert(self.signals, self[signal_name])
+	signal.register(self, signal_name)
+end
+
+function GameObject:emit_signal(signal_name, ...)
+	signal.emit(self, signal_name, ...)
 end
 
 function GameObject:exit() end

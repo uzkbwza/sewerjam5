@@ -19,7 +19,16 @@ function tabley.push_front(t, value)
 end
 
 function tabley.pop_front(t)
-  return table.remove(t, 1)
+    return table.remove(t, 1)
+end
+
+function tabley.clear(t)
+    local next = next
+    local i, _ = next(t)
+	while i do 
+		t[i] = nil
+		i, _ = next(t)
+	end
 end
 
 function tabley.push(t, value)
@@ -184,8 +193,17 @@ function tabley.serialize(t, indent, start)
     return serialized
 end
 
-function tabley.deserialize(str) 
-	return assert(loadstring(str))()
+function tabley.deserialize(str)
+    return assert(loadstring(str))()
+end
+
+function table.populate_recursive(t, ...)
+    local keys = { ... }
+    for _, key in ipairs(keys) do
+        t[key] = t[key] or {}
+        t = t[key]
+    end
+	return t
 end
 
 

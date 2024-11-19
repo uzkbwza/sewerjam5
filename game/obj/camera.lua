@@ -17,13 +17,14 @@ function Camera:follow(obj)
 		return
 	end
 
-	obj.destroyed:connect(self, function()
+	signal.connect(obj, "destroyed", self, "on_object_destroyed", function()
 		self.following = nil
 	end)
 
-	obj.removed:connect(self, function()
+	signal.connect(obj, "removed", self, "on_object_removed", function()
 		self.following = nil
 	end)
+
 end
 
 function Camera:set_limits(xstart, ystart, xend, yend)
@@ -40,11 +41,11 @@ function Camera:update(dt)
 end
 
 
-function Camera:clamp_to_limits(offset)
+function Camera:clamp_to_limits(offset_x, offset_y)
 	if not self.limits then
-		return offset
+		return offset_x, offset_y
 	end
-	local x, y = offset.x, offset.y
+	local x, y = offset_x, offset_y
 	local xstart, xend, ystart, yend = self.limits.xstart, self.limits.xend, self.limits.ystart, self.limits.yend
 
 	local xcenter, ycenter = (xstart + xend) / 2, (ystart + yend) / 2
@@ -59,9 +60,9 @@ function Camera:clamp_to_limits(offset)
 		yend = ycenter + self.viewport_size.y / 2
 	end
 
-	offset.x = clamp(x, xstart + self.viewport_size.x / 2, xend - self.viewport_size.x / 2)
-	offset.y = clamp(y, ystart + self.viewport_size.y / 2, yend - self.viewport_size.y / 2)
-	return offset
+	offset_x = clamp(x, xstart + self.viewport_size.x / 2, xend - self.viewport_size.x / 2)
+	offset_y = clamp(y, ystart + self.viewport_size.y / 2, yend - self.viewport_size.y / 2)
+	return offset_x, offset_y
 end
 
 return Camera

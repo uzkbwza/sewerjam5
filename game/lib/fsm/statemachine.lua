@@ -22,10 +22,6 @@ function StateMachine._create(obj)
 		update = function() end
 	}
 	
-	obj._on_state_transition = function(new_state_name, ...)
-		obj:change_state(new_state_name, ...)
-	end
-	
 	setmetatable(obj, mt)
 
 	return obj
@@ -37,7 +33,7 @@ function StateMachine:add_state(state)
 	if self.current_state == nil then
 		self:change_state(state.name)
 	end
-	state.transition_started:connect(self._on_state_transition)
+	signal.transition = function(to, ...) self:change_state(to, ...) end
 end
 
 function StateMachine:add_states(states)
@@ -47,14 +43,14 @@ function StateMachine:add_states(states)
 end
 
 function StateMachine:change_state(to, ...)
-	if self.current_state then 
-		self.current_state:exit()
-	end
+    if self.current_state then
+        self.current_state:exit()
+    end
 
-	self.current_state = self.states[to]
-	if self.current_state == nil then error("state doesn't exist: " .. to) end
+    self.current_state = self.states[to]
+    if self.current_state == nil then error("state doesn't exist: " .. to) end
 
-	self.current_state.enter(...)
+    self.current_state.enter(...)
 end
 
 return StateMachine

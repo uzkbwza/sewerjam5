@@ -20,19 +20,18 @@ function State:new(table)
 
 	local go = function(to, ...) self:transition(to, ...) end
 
-	for k, v in pairs(table) do
-		if type(v) == "function" then
-			self[k] = function(...) v(go, ...) end
-		else
-			self[k] = v
-		end
-	end
-
-	self.transition_started = Signal()
+    for k, v in pairs(table) do
+        if type(v) == "function" then
+            self[k] = function(...) v(go, ...) end
+        else
+            self[k] = v
+        end
+    end
+	
 end
 
 function State:transition(to, ...)
-	self.transition_started:emit(to, ...)
+	error("no state machine!")
 end
 
 return State

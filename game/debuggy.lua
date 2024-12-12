@@ -69,6 +69,9 @@ function debuggy.count_all(f)
 end
 
 function debuggy.type_name(o)
+    if Object.is(o, Object) then
+		return (o.__type_name())
+	end 
 	if global_type_table == nil then
 		global_type_table = {}
 		for k,v in pairs(_G) do

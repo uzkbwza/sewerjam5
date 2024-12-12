@@ -29,9 +29,16 @@
 		"tilesets",
 		"nativefs",
 		"binser",
-		"signal"
+		"signal",
+		"bonglewunch",
+		"smart_array",
+		"array",
+		"makelist",
+		"game_screens",
+		"start_screen",
+		"to_layer_bit"
 	],
 	"Lua.diagnostics.disable": [
-		"undefined-field"
+		"undefined-field",
 	],
 }

@@ -1,5 +1,5 @@
 
-Sequencer = Object:extend()
+Sequencer = Object:extend("Sequencer")
 
 -- Example usage: 
 --[[
@@ -22,15 +22,32 @@ end)
 ]]
 
 function Sequencer:new()
-	self.running = {}
+    self.running = {}
+	self.running_indices = {}
 	self.suspended = {}
 	self.dt = 0
 	self.elapsed = 0
 end
 
 function Sequencer:start(func)
-	local co = coroutine.create(func)
-	self:init_coroutine(co)
+    local co = coroutine.create(func)
+    self:init_coroutine(co)
+    return co
+end
+
+function Sequencer:stop(co)
+	if co == nil then return end
+    local index = self.running_indices[co]
+	if index == nil then return end
+
+	local length = #self.running
+    local last = self.running[length]
+    self.running[index] = last
+    self.running_indices[last] = index
+    self.running[last] = nil
+    self.running_indices[co] = nil
+	
+	self.suspended[co] = nil
 end
 
 -- function Sequencer:chain_funcs(funcs)
@@ -75,7 +92,8 @@ function Sequencer:loop(func, times)
 end
 
 function Sequencer:init_coroutine(co)
-	table.insert(self.running, co)
+    table.insert(self.running, co)
+	self.running_indices[co] = #self.running
 end
 
 function Sequencer:update(dt)
@@ -92,10 +110,17 @@ function Sequencer:update(dt)
 		end
 	end
 
-	table.fast_remove(self.running, function(t, i, j)
-		local co = t[i]
-		return self.suspended[co] ~= nil or coroutine.status(co) ~= "dead"
-	end)
+    for i = #self.running, 1, -1 do
+		local co = self.running[i]
+        if not (self.suspended[co] ~= nil or coroutine.status(co) ~= "dead") then
+			self:stop(co)
+		end
+	end
+
+	-- table.fast_remove(self.running, function(t, i, j)
+	-- 	local co = t[i]
+	-- 	return self.suspended[co] ~= nil or coroutine.status(co) ~= "dead"
+	-- end)
 
 	self.elapsed = self.elapsed + dt
 
@@ -111,8 +136,13 @@ end
 
 function Sequencer:tween(func, value_start, value_end, duration, easing, step)
 	local start = self.elapsed
-	local finish = self.elapsed + duration
-	local ease_func = ease(easing)
+    local finish = self.elapsed + duration
+	local ease_func
+	if type(easing) == "string" then
+		ease_func = ease(easing)
+	else
+		ease_func = easing
+	end
 
 	if step == nil then
 		step = 0
@@ -131,11 +161,13 @@ function Sequencer:tween_property(obj, property, value_start, value_end, duratio
 end
 
 function Sequencer:suspend(chain)
+	chain = chain or self.current_chain
 	self.suspended[chain] = true
 	self.running[chain] = nil
 end
 
 function Sequencer:resume(chain)
+	chain = chain or self.current_chain
 	self.suspended[chain] = nil
 	self.running[chain] = true
 	self:init_coroutine(chain)
@@ -154,6 +186,21 @@ function Sequencer:wait_for(func)
 	while not func() do
 		coroutine.yield()
 	end
+end
+
+function Sequencer:wait_for_signal(obj, signal_id)
+	local chain = self.current_chain
+	self:suspend(chain)
+    signal.connect(obj, signal_id, self, "resume_after_obj_signal_" .. tostring(signal_id),
+        function(...)
+			self.signal_output = {...}
+            self:resume(chain)
+        end,
+			true)
+    if signal.get(obj, "destroyed") then
+        signal.connect(obj, "destroyed", self, "cancel_chain", function() self:stop(chain) end, true)
+    end
+	coroutine.yield()
 end
 
 function Sequencer:call(func)

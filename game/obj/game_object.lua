@@ -1,14 +1,16 @@
-local GameObject = Object:extend()
-local Sensor = require("obj.sensor")
+---@class GameObject : Object
+local GameObject = Object:extend("GameObject")
+local SoundPool = require("lib.sound")
 
-GameObject.DEFAULT_DRAW_CULL_DIST = 64
+GameObject.DEFAULT_DRAW_CULL_DIST = 32
 
 function GameObject:new(x, y)
 
 	self:add_signal("destroyed")
-	self:add_signal("removed")
     self:add_signal("moved")
-	
+	self:add_signal("update_changed")
+    self:add_signal("visibility_changed")
+
 	if x then
 		if type(x) == "table" then
 			self.pos = Vec2(x.x, x.y)
@@ -19,32 +21,28 @@ function GameObject:new(x, y)
 		self.pos = Vec2(0, 0)
 	end
 
-	
 	self.rot = 0
 	self.scale = Vec2(1, 1)
 	
-	self._update_functions = {}
-	self._draw_functions = {}
+	self._update_functions = nil
+	self._draw_functions = nil
 	
-	self.screen = nil
+	self.world = nil
+
+	self.draw_cull_dist = nil
 	
 	self.visible = true
 	
-	-- signals
-	self.visibility_changed = nil
-	self.update_changed = nil
 	self.static = false
-	
-	self.is_bump_object = nil
-	
+		
 	self.z_pos = 0
-    self.z_index = 0
 
 end
 
-function GameObject:get_draw_rect()
-	local cull_dist = self.draw_cull_dist or GameObject.DEFAULT_DRAW_CULL_DIST
-	return self.pos.x - cull_dist / 2, self.pos.y - cull_dist / 2, cull_dist, cull_dist
+function GameObject:get_draw_rect(get_draw_pos)
+    local cull_dist = self.draw_cull_dist or GameObject.DEFAULT_DRAW_CULL_DIST
+	local posx, posy = get_draw_pos(self)
+	return posx - cull_dist / 2, posy - cull_dist / 2, cull_dist, cull_dist
 end
 
 function GameObject:on_moved()
@@ -59,49 +57,51 @@ end
 
 function GameObject.dummy() end
 
-function GameObject:add_sensor(rect, monitoring, monitorable, filter, entered_function, update_function, exit_function)
-	local sensor = Sensor(rect, monitoring, monitorable, filter, entered_function, update_function, exit_function, self)
-	if self.sensors == nil then
-		self.sensors = {}
-		self:add_update_function(GameObject.update_sensors)
-		self:add_move_function(GameObject.move_sensors)
-	end
 
-	table.insert(self.sensors, sensor)
-	return sensor
+-- references to other objects, automatically unrefs when object is destroyed
+function GameObject:ref(name, object)
+    if object == self[name] then return end
+    if self[name] then
+        self:unref(name)
+    end
+    self[name] = object
+	signal.connect(object, "destroyed", self, "on_ref_destroyed", function() self[name] = nil end)
 end
 
-function GameObject:update_sensors(dt)
-	for _, sensor in ipairs(self.sensors) do
-		sensor:update(dt)
-	end
+function GameObject:unref(name)
+	signal.disconnect(self[name], "destroyed", self, "on_ref_destroyed")
+	self[name] = nil
 end
-
-function GameObject:move_sensors(name)
-	for _, sensor in ipairs(self.sensors) do
-		if sensor.name == name then
-			sensor:move_to(self.pos.x, self.pos.y)
-			return
-		end
-	end
-end
-
 
 function GameObject:add_sequencer()
+	if self.sequencer then return end
 	assert(self.sequencer == nil, "GameObject:add_sequencer() called but sequencer already exists")
 	self.sequencer = Sequencer()
 	self:add_update_function(function(obj, dt) obj.sequencer:update(dt) end)
 end
 
 function GameObject:add_elapsed_time()
+	if self.elapsed ~= nil then return end
 	self.elapsed = 1
 	self:add_update_function(function(obj, dt) obj.elapsed = obj.elapsed + dt end)
 end
 
 function GameObject:add_elapsed_ticks()
-	assert(self.elapsed ~= nil, "GameObject:add_elapsed_ticks() called but no elapsed time implemented")
+	if self.tick ~= nil then return end
+
+	if self.elapsed == nil then 
+		self:add_elapsed_time()
+	end
 	self.tick = 1
-	self:add_update_function(function(obj, dt) obj.tick = floor(obj.elapsed) end)
+	self:add_update_function(
+        function(obj, dt)
+			self.is_new_tick = false
+			local old = obj.tick
+            obj.tick = floor(obj.elapsed)
+			if obj.tick ~= old then
+				self.is_new_tick = true
+			end
+	end)
 end
 
 function GameObject:add_update_function(func)
@@ -118,11 +118,19 @@ function GameObject:add_draw_function(func)
 	table.insert(self._draw_functions, func)
 end
 
+function GameObject:get_draw_offset()
+	return 0, 0
+end
+
 function GameObject:add_move_function(func)
-	if self._move_functions == nil then
-		self._move_functions = {}
-	end
-	table.insert(self._move_functions, func)
+    if self._move_functions == nil then
+        self._move_functions = {}
+    end
+    table.insert(self._move_functions, func)
+end
+
+function GameObject:defer(func, ...)
+	self.world:defer(func, {self, ...})
 end
 
 -- does not affect transform, only world traversal
@@ -145,90 +153,113 @@ function GameObject:remove_child(child)
 end
 
 function GameObject:update_shared(dt, ...)
-	-- assert(self.update ~= nil, "GameObject:update_shared() called but no update function implemented")
-	for _, func in ipairs(self._update_functions) do
-		func(self, dt, ...)
+    -- assert(self.update ~= nil, "GameObject:update_shared() called but no update function implemented")
+    if self._update_functions then
+        for _, func in ipairs(self._update_functions) do
+            func(self, dt, ...)
+        end
+    end
+    self:update(dt, ...)
+end
+
+function GameObject:queue_destroy()
+	self.is_queued_for_destruction = true
+	self:defer(self.destroy)
+end
+
+function GameObject:timer_running(name)
+    return self.timers and self.timers[name] ~= nil
+end
+
+function GameObject:start_timer(name, duration, callback)
+    if callback == nil and type(name) == "number" then
+		callback = duration
+        duration = name
+        name = self.timers and #self.timers + 1 or 1
 	end
-	self:update(dt, ...)
+	
+	if self.timers == nil then
+        self.timers = {}
+		self:add_update_function(function(obj, dt)
+			for k, v in pairs(obj.timers) do
+				v.elapsed = v.elapsed + dt
+                if v.elapsed >= v.duration then
+					if v.callback then
+						v.callback(obj)
+					end
+					obj.timers[k] = nil
+				end
+			end
+		end)
+	end
+	self.timers[name] = {
+		duration = duration,
+		elapsed = 0,
+		callback = callback
+	}
 end
 
-function GameObject:add_update_signals()
-	self:add_signal("update_changed")
-	self:add_signal("visibility_changed")
-end
-
-function GameObject:spawn_object(obj, x, y)
-	obj.pos = self.pos:clone() + Vec2(x or 0, y or 0)
-	self.screen:add_object(obj)
+function GameObject:spawn_object(obj)
+	self.world:add_object(obj)
 	return obj
 end
 
 function GameObject:get_input_table()
-	return self.base_screen:get_input_table()
+    if self.world then
+        return self.world:get_input_table()
+    end
+    if self.canvas_layer then
+        return self.canvas_layer:get_input_table()
+    end
 end
 
-function GameObject:movev(dv)
-	self:move(dv.x, dv.y)
+function GameObject:add_tag(tag)
+    self.world:add_tag(self, tag)
 end
 
-function GameObject:move(dx, dy)
-	self:move_to(self.pos.x + dx, self.pos.y + dy)
+function GameObject:remove_tag(tag)
+	self.world:remove_tag(self, tag)
 end
 
-function GameObject.default_bump_filter(item, other)
-	if other and other.solid then
-		return "slide"
-	else 
-		return "cross"
+function GameObject:movev(dv, ...)
+	self:move(dv.x, dv.y, ...)
+end
+
+function GameObject:move(dx, dy, ...)
+	dy = dy or 0
+	self:move_to(self.pos.x + dx, self.pos.y + dy, ...)
+end
+
+function GameObject:set_visibility(visible)
+	local different = self.visible ~= visible
+	self.visible = visible
+	if different then
+		self:emit_signal("visibility_changed")
 	end
 end
 
 function GameObject:hide()
-	if not self.visible then
-		return
-	end
+    if not self.visible then
+        return
+    end
+	local different = self.visible
 	self.visible = false
-	self:emit_signal("visibility_changed")
+	if different then
+		self:emit_signal("visibility_changed")
+	end
 end
 
 function GameObject:show()
 	if self.visible then
 		return
 	end
+	local different = self.visible	
 	self.visible = true
-	self:emit_signal("visibility_changed")
+	if different then
+		self:emit_signal("visibility_changed")
+	end
 end
 
-
-function GameObject:bump_track_overlaps()
-	local cr = self.collision_rect
-
-	local overlaps = {}
-
-	local query = self.bump_world:queryRect(self.pos.x + cr.x, self.pos.y + cr.y, cr.width, cr.height, self.bump_filter)
-	
-	for _, other in ipairs(query) do
-		if other == self then
-			goto continue
-		end
-		if other and not (other.solid) then
-			if self.overlaps[other] == nil then
-				self:object_entered_rect_shared(other)
-			end
-			overlaps[other] = true
-		end
-		::continue::
-	end
-
-	for k, _ in pairs(self.overlaps) do 
-		if not overlaps[k] then 
-			self:object_exited_rect_shared(k)
-		end
-	end
-
-	self.overlaps = overlaps
-
-end
 
 function GameObject:add_object_entered_rect_function(func)
 	if self._object_entered_rect_functions == nil then
@@ -271,157 +302,6 @@ end
 function GameObject:object_exited_rect(other)
 end
 
-function GameObject:get_overlapping_objects_in_rect(rect, object_filter)
-	local objects = {}
-	rect = rect + self.pos
-	local query = self.bump_world:queryRect(rect.x, rect.y, rect.width, rect.height, object_filter)
-	for _, v in pairs(query) do
-		if not v.collision_rect and not v.pos then goto continue end
-			if rect:intersects(v.collision_rect + v.pos) then
-				table.insert(objects, v)
-			end
-		::continue::
-	end
-	return objects
-end
-
-function GameObject:get_closest_overlapping_object(rect, object_filter)
-	local closest = nil
-	local closest_dist = math.huge
-
-	if rect ~= nil then
-		rect = rect + self.pos
-		local query = self.bump_world:queryRect(rect.x, rect.y, rect.width, rect.height, object_filter)
-		for _, v in pairs(query) do
-			if not v.collision_rect and not v.pos then goto continue end
-				if rect:intersects(v.collision_rect + v.pos) then
-					if v ~= self and self.pos:distance_squared(v.pos) < closest_dist then
-						closest = v
-						closest_dist = self.pos:distance_squared(v.pos)
-					end
-				end
-			::continue::
-		end
-		return closest
-	end
-
-	for k, _ in pairs(self.overlaps) do
-		if self.pos:distance_squared(k.pos) < closest_dist then
-			closest = k
-			closest_dist = self.pos:distance_squared(k.pos)
-		end
-	end
-	return closest
-end
-
-local default_bump_info = {
-	rect = Rect.centered(0, 0, 1, 1),
-	solid = true,
-	filter = GameObject.default_bump_filter,
-	track_overlaps = false,
-}
-
-function GameObject:bump_init(info_table)
-
-	-- initializes bump.lua physics with AABB collisions and spatial hashing. useful even for non-physics objects for collision detection for e.g. coins
-	info_table = info_table or default_bump_info
-
-	-- TODO: position centered on feet?
-	if not (info_table.rect.x == -info_table.rect.width / 2 and info_table.rect.y == -info_table.rect.height / 2) then 
-		print("warning: collision rect will be centered")
-	end
-
-	local filter = info_table.filter or default_bump_info.filter
-
-	if info_table.track_overlaps == nil then 
-		info_table.track_overlaps = default_bump_info.track_overlaps
-	end
-
-	local track_overlaps = info_table.track_overlaps
-
-	if track_overlaps then
-		self.tracks_overlaps = true
-		self.overlaps = {}
-		self:add_update_function(self.bump_track_overlaps)
-	end
-
-	if info_table.solid == nil then 
-		info_table.solid = default_bump_info.solid
-	end
-
-	self.solid = info_table.solid
-	self.collision_rect = (info_table.rect) or default_bump_info.rect
-	self.is_bump_object = true
-	self.move_to = GameObject.move_to_bump
-	self.bump_filter = filter
-	self.bump_filter_checks = {}
-	self.bump_world = nil
-	self.colliding_objects = {}
-
-end
-
-function GameObject:set_bump_collision_rect(rect)
-	self.collision_rect = rect
-	self.world:update(self, self.pos.x - self.collision_rect.width / 2, self.pos.y - self.collision_rect.height / 2, self.collision_rect.width, self.collision_rect.height)
-end
-
-function GameObject:set_bump_world(world)
-	if self.bump_world then
-		if self.bump_world:hasItem(self) then
-			self.bump_world:remove(self)
-		end
-	end
-	self.bump_world = world
-	if world then
-		world:add(self, self.pos.x - self.collision_rect.width / 2, self.pos.y - self.collision_rect.height / 2, self.collision_rect.width, self.collision_rect.height)
-	end
-
-	if self.sensors then 
-		for _, sensor in ipairs(self.sensors) do
-			sensor:add_bump_world(world)
-		end
-	end
-end
-
-function GameObject:move_to_bump(x, y, filter, noclip)
-
-	local old_x = self.pos.x
-	local old_y = self.pos.y
-
-	if noclip or self.noclip then
-		self.pos.x = x
-		self.pos.y = y
-		if old_x ~= self.pos.x or old_y ~= self.pos.y then
-			if self.bump_world then
-				self.bump_world:update(self, x, y)
-			end
-			self:on_moved()
-		end
-		return
-	end
-	
-	filter = filter or self.bump_filter
-
-	local actual_x, actual_y, collisions, num_collisions = self.bump_world:move(self, x - self.collision_rect.width / 2, y - self.collision_rect.height / 2, filter)
-
-	self.pos.x = actual_x + self.collision_rect.width / 2
-	self.pos.y = actual_y + self.collision_rect.height / 2
-
-	for i = 1, num_collisions do
-		local col = collisions[i]
-		self:process_collision(col)
-		if col.slide then 
-			if self.is_simple_physics_object then 
-				self.vel:mul_in_place(col.normal.x ~= 0 and 0 or 1, col.normal.y ~= 0 and 0 or 1)
-			end
-		end
-	end
-
-	if old_x ~= self.pos.x or old_y ~= self.pos.y then
-		self:on_moved()
-	end
-end
-
 function GameObject:process_collision(col)
 end
 
@@ -453,9 +333,13 @@ function GameObject:movev_to(v)
 	self:move_to(v.x, v.y)
 end
 
-function GameObject:tp_to(x, y)
+function GameObject:tp(x, y, ...)
+    self:move_to(self.pos.x + x, self.pos.y + y, nil, true, ...)
+end
+
+function GameObject:tp_to(x, y, ...)
 	-- old method from when interpolation was used
-	self:move_to(x, y, nil, true)
+	self:move_to(x, y, nil, true, ...)
 end
 
 function GameObject:tpv_to(v)
@@ -471,42 +355,15 @@ end
 function GameObject:update(dt, ...)
 end
 
-function GameObject:apply_forcev(force)
-	self.accel:add_in_place(force.x, force.y)
-end
-
-function GameObject:apply_force(forcex, forcey)
-	self.accel:add_in_place(forcex, forcey)
-end
-
-function GameObject:init_basic_physics()
-	if self.vel ~= nil then
-		error("init_basic_physics() called but vel already exists")
-	end
-	self.vel = Vec2(0, 0)
-	self.accel = Vec2(0, 0)
-	self.impulses = Vec2(0, 0)
-	self:add_update_function(GameObject.apply_simple_physics)
-	self.drag = 0.5
-	self.is_simple_physics_object = true
-end
-
-function GameObject:apply_simple_physics(dt)
-	local ax, ay = vec2_mul_scalar(self.accel.x, self.accel.y, dt)
-	self.vel:add_in_place(ax, ay)
-	self:move_to(self.pos.x + self.vel.x * dt, self.pos.y + self.vel.y * dt)
-	self.accel:mul_in_place(0)
-	self.impulses:mul_in_place(0)
-	if self.drag > 0 then 
-		self.vel:mul_in_place(pow(1 - self.drag, dt))
-	end
-end
-
-function GameObject:graphics_transform()
+function GameObject:graphics_transform(translate_offs_x, translate_offs_y)
+    translate_offs_x = translate_offs_x or 0
+	translate_offs_y = translate_offs_y or 0
 	-- using the api here directly because it's faster
 	local pos = self.pos
-	local scale = self.scale
-	love.graphics.translate(pos.x, pos.y + self.z_pos)
+    local scale = self.scale
+
+	-- love.graphics.translate(pos.x + translate_offs_x, pos.y + self.z_pos + translate_offs_y)
+	love.graphics.translate(round(pos.x + translate_offs_x), round(pos.y + self.z_pos + translate_offs_y))
 	love.graphics.rotate(self.rot)
 	love.graphics.scale(scale.x, scale.y)
 	love.graphics.setColor(1, 1, 1, 1)
@@ -515,11 +372,15 @@ end
 function GameObject:draw_shared(...)
 
 	love.graphics.push()
+	
+	local offsx, offsy = self:get_draw_offset()
+	self:graphics_transform(offsx, offsy)
+    
 
-	self:graphics_transform()
-
-	for _, func in ipairs(self._draw_functions) do
-		func(self, ...)
+	if self._draw_functions then
+		for _, func in ipairs(self._draw_functions) do
+			func(self, ...)
+		end
 	end
 
 	self:draw(...)
@@ -540,25 +401,28 @@ end
 function GameObject:debug_draw_bounds_shared()
 	love.graphics.push()
 
-	self:graphics_transform()
+	love.graphics.translate(self.pos.x, self.pos.y + self.z_pos)
 	
 	if self.collision_rect then
+		local offset_x, offset_y = self:get_collision_rect_offset()
 		if self.solid then 
 			love.graphics.setColor(0, 0.25, 1, 0.125)
 		else 
 			love.graphics.setColor(1, 0.5, 0, 0.125)
 		end
-		love.graphics.rectangle("fill", -self.collision_rect.width / 2, -self.collision_rect.height / 2, self.collision_rect.width, self.collision_rect.height)
+
+        love.graphics.rectangle("fill", offset_x + 1, offset_y + 1, self.collision_rect.width - 1, self.collision_rect.height - 1)
+		
 		if self.solid then 
 			love.graphics.setColor(0, 0.25, 1, 1.0)
 		else 
 			love.graphics.setColor(1, 0.5, 0, 1.0)
 		end
-		love.graphics.rectangle("line", -self.collision_rect.width / 2, -self.collision_rect.height / 2, self.collision_rect.width, self.collision_rect.height)
+		love.graphics.rectangle("line", offset_x + 1, offset_y + 1, self.collision_rect.width - 1, self.collision_rect.height - 1)
 	end
 
-	if self.sensors then
-		for _, sensor in ipairs(self.sensors) do
+	if self.bump_sensors then
+		for _, sensor in ipairs(self.bump_sensors) do
             local color
 			local alpha = 1.0
 			if sensor.monitoring and sensor.monitorable then
@@ -566,9 +430,9 @@ function GameObject:debug_draw_bounds_shared()
 			elseif sensor.monitorable then
 				color = palette.green
 			elseif sensor.monitoring then
-				color = palette.maroon
+				color = palette.lilac
 			else
-                color = palette.darkgreyblue
+                color = palette.darkgrey
 				alpha = 0.25
 			end 
 			graphics.draw_collision_box(sensor.rect, color, alpha)
@@ -583,24 +447,82 @@ end
 function GameObject:debug_draw_bounds()
 end
 
+function GameObject:add_sfx(sfx_name, volume, pitch, loop, relative)
+    self.sfx = self.sfx or {}
+    local src = audio.get_sfx(sfx_name)
+	src:setRelative(relative or false)
+	self.sfx[sfx_name] = {
+		src = src,
+		volume = volume,
+        pitch = pitch,
+		loop = loop
+    }
+	return src
+end
+
+function GameObject:play_sfx(sfx_name, volume, pitch, loop, x, y, z)
+    local t = self.sfx[sfx_name]
+    local relative = t.src:isRelative()
+    t.src:stop()
+    x = x or (relative and (0) or self.pos.x)
+    y = y or (relative and (0) or self.pos.y)
+    z = z or (relative and (audio.default_z_pos) or self.z_pos + audio.default_z_pos)
+    -- audio.set_src_position(t.src, x, y, z)
+    t.src:setPosition(x, y, z)
+    audio.play_sfx(t.src, volume or t.volume, pitch or t.pitch, loop or t.loop)
+end
+
+function GameObject:get_sfx(sfx_name)
+	return self.sfx[sfx_name].src
+end
+
+function GameObject:stop_sfx(sfx_name)
+	self.sfx[sfx_name].src:stop()
+end
+
+
+local destroyed_index_func = function(t, k)
+	if t == "is_destroyed" then
+		return true
+	end
+	error("attempt to access variable of destroyed object")
+end
+
 function GameObject:destroy()
-	if self.objects_to_destroy then
-		for _, v in pairs(self.objects_to_destroy) do
-			v:destroy()
+	if self.is_destroyed then return end
+    if self.objects_to_destroy then
+        for v, _ in pairs(self.objects_to_destroy) do
+            signal.disconnect(v, "destroyed", self, "on_object_to_destroy_destroyed_early")
+            v:destroy()
+        end
+    end
+	if self.sfx then
+		for _, t in pairs(self.sfx) do
+			t.src:stop()
+			t.src:release()
 		end
 	end
+
 	self.is_destroyed = true
 	self:exit_shared()
 	if self.sequencer then
 		self.sequencer:destroy()
 	end
     self:emit_signal("destroyed", self)
-    signal.deregister_object(self)
+    signal.cleanup(self)
+
+	-- nuclear debugging
+    if debug.enabled then
+        self:override_instance_metamethod("__index", destroyed_index_func)
+	end
 end
 
-function GameObject:destroy_when_i_am_destroyed(obj)
+function GameObject:bind_destruction(obj)
     self.objects_to_destroy = self.objects_to_destroy or {}
-	table.insert(self.objects_to_destroy, obj)
+    self.objects_to_destroy[obj] = true
+    signal.connect(obj, "destroyed", self, "on_object_to_destroy_destroyed_early", function()
+		self.objects_to_destroy[obj] = nil
+	end)
 end
 
 function GameObject:prune_signals()
@@ -620,18 +542,42 @@ function GameObject:enter_shared()
 	self:enter()
 end
 
+function GameObject:get_objects_with_tag(tag)
+    return self.world:get_objects_with_tag(tag)
+end
+function GameObject:get_first_object_with_tag(tag)
+    return self.world:get_first_object_with_tag(tag)
+end
+function GameObject:has_tag(tag)
+    return self.world:has_tag(self, tag)
+end
+function GameObject:get_closest_object_with_tag(tag)
+	local objs = self:get_objects_with_tag(tag)
+    if not objs then return end
+    local closest_obj = nil
+    local closest_dist = nil
+    for _, obj in (objs):ipairs() do
+		local dist = vec2_distance_squared(obj.pos.x, obj.pos.y, self.pos.x, self.pos.y)
+		if not closest_obj or dist < closest_dist then
+			closest_obj = obj
+			closest_dist = dist
+		end
+	end
+	return closest_obj
+end
+
 function GameObject:enter() end
 
 function GameObject:exit_shared()
     self:exit()
 end
 
-function GameObject:to_local(pos)
-	return pos - self.pos
+function GameObject:to_local(pos_x, pos_y)
+	return pos_x - self.pos.x, pos_y - self.pos.y
 end
 
-function GameObject:to_world(pos)
-	return pos + self.pos
+function GameObject:to_global(pos_x, pos_y)
+	return pos_x + self.pos.x, pos_y + self.pos.y
 end
 
 function GameObject:add_signal(signal_name)

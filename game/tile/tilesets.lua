@@ -19,7 +19,8 @@ function tilesets.add(name, tileset)
 	for i, tile in ipairs(tileset.tiles) do
 		local id = tostring(tilesets.num_tilesets) .. "_" .. tostring(i)
 		tilesets.tileset_tiles[id] = tile
-		tilesets.tile_ids[i + tilesets.num_tiles] = id
+        tilesets.tile_ids[i + tilesets.num_tiles] = id
+		tilesets.tile_to_id[tile] = id
 		c = c + 1
 	end
 	tilesets.tileset_names[tilesets.num_tilesets] = name
@@ -32,8 +33,9 @@ function tilesets.load()
 	tilesets.tileset_tiles = {}
 	tilesets.tile_ids = {}
 	tilesets.tileset_ids = {}
-	tilesets.tileset_offsets = {}
     tilesets.tileset_names = {}
+    tilesets.tileset_offsets = {}
+	tilesets.tile_to_id = {}
 	
     for _, data in ipairs(tileset_data.TILESETS) do
         local name = data.name

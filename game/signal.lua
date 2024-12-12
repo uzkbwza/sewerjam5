@@ -1,154 +1,203 @@
+---@class Signal
+---@field emitters table<table, table<string|number, {listeners: table<table, table<string|number, {func: function, oneshot: boolean}>>}>>
+---@field listeners table<table, table<table, table<string|number, table<string|number, {func: function, oneshot: boolean}>>>>>
 local signal = {
     emitters = {},
     listeners = {},
 }
 
-function signal.register(emitter, name)
-	signal.emitters[emitter] = signal.emitters[emitter] or {}
-    assert(signal.emitters[emitter][name] == nil, "signal already registered")
-    signal.emitters[emitter][name] = {
-		listeners = {}
-	}
+---@param t table
+---@return boolean
+local function is_empty(t)
+    return next(t) == nil
 end
 
-function signal.get(emitter, name)
-	if signal.emitters[emitter] == nil then return nil end
-	return signal.emitters[emitter][name]
+---@param emitter table
+---@param id string | number
+function signal.register(emitter, id)
+    signal.emitters[emitter] = signal.emitters[emitter] or {}
+    assert(signal.emitters[emitter][id] == nil, "signal already registered")
+    signal.emitters[emitter][id] = {
+        listeners = {}
+    }
 end
 
-function signal.deregister(emitter, name)
-	local sig = signal.get(emitter, name)
+---@param emitter table
+---@param id string | number
+---@return table?
+function signal.get(emitter, id)
+    if signal.emitters[emitter] == nil then return nil end
+    return signal.emitters[emitter][id]
+end
+
+---@param emitter table
+---@param id string | number
+function signal.deregister(emitter, id)
+    local sig = signal.get(emitter, id)
 
     if sig == nil then return end
-	
+    
     for listener, connection in pairs(sig) do
-        for function_name, _ in pairs(connection) do
-			signal.disconnect(emitter, name, listener, function_name)
-		end
-	end
+        for connection_name, _ in pairs(connection) do
+            signal.disconnect(emitter, id, listener, connection_name)
+        end
+    end
 
-    signal.emitters[emitter][name] = nil
-	if table.is_empty(signal.emitters[emitter]) then signal.emitters[emitter] = nil end
+    signal.emitters[emitter][id] = nil
+    if is_empty(signal.emitters[emitter]) then signal.emitters[emitter] = nil end
 end
 
-function signal.deregister_object(t)
-	signal._remove_listener(t)
-	signal._remove_emitter(t)
-end
-
-function signal._remove_listener(listener)
-    local lis = signal.listeners[listener]
+---@param obj table
+function signal.cleanup(obj)
+    assert(type(obj) == "table", "obj is not a table")
+    local lis = signal.listeners[obj]
     if lis ~= nil then
         for emitter, signals in pairs(lis) do
             for signal_name, functions in pairs(signals) do
-                for function_name, _ in pairs(functions) do
-                    signal.disconnect(emitter, signal_name, listener, function_name)
+                for connection_name, _ in pairs(functions) do
+                    signal.disconnect(emitter, signal_name, obj, connection_name)
                 end
             end
         end
     end
-end
 
-function signal._remove_emitter(emitter)
-	local signals = signal.emitters[emitter]
+    local signals = signal.emitters[obj]
 
     if signals ~= nil then
         for signal_name, t in pairs(signals) do
             for listener, connection in pairs(t.listeners) do
-                for function_name, _ in pairs(connection) do
-                    signal.disconnect(emitter, signal_name, listener, function_name)
+                for connection_name, _ in pairs(connection) do
+                    signal.disconnect(obj, signal_name, listener, connection_name)
                 end
             end
         end
     end
-	signal.emitters[emitter] = nil
+
+    signal.emitters[obj] = nil
 end
 
-function signal.connect(emitter, signal_name, listener, function_name, func, oneshot)
+---@param emitter table
+---@param signal_id string | number
+---@param listener table
+---@param connection_id string | number
+---@param func? function
+---@param oneshot? boolean
+function signal.connect(emitter, signal_id, listener, connection_id, func, oneshot)
     assert(type(emitter) == "table", "emitter is not a table")
     assert(type(listener) == "table", "listener is not a table")
-    assert(type(signal_name) == "string", "signal_name is not a string")
-    assert(type(function_name) == "string", "function_name is not a string")
+    local signal_id_type = type(signal_id)
+    local connection_id_type = type(connection_id)
+    assert(signal_id_type == "string" or signal_id_type == "number", "signal_id is not a string or number")
+    assert(connection_id_type == "string" or connection_id_type == "number", "connection_id is not a string or number")
 
     assert(emitter ~= nil, "emitter is nil")
-	assert(listener ~= nil, "listener is nil")
+    assert(listener ~= nil, "listener is nil")
 
     if oneshot == nil then oneshot = false end
-	
-    local sig = signal.get(emitter, signal_name)
     
-	if sig == nil then
-		error("signal " .. signal_name .. "does not exist for object " .. tostring(emitter))
-	end
-	
+    local sig = signal.get(emitter, signal_id)
+    
+    if sig == nil then
+        error("signal " .. tostring(signal_id) .. " does not exist for object " .. tostring(emitter))
+    end
+    
     sig.listeners[listener] = sig.listeners[listener] or {}
 
-	func = func or function(...) listener[function_name](listener, ...) end
+    -- if a function is not provided, use the connection_id as a function
+    func = func or function(...) listener[connection_id](listener, ...) end
 
-    sig.listeners[listener][function_name] = {
+    sig.listeners[listener][connection_id] = {
         func = func,
-		oneshot = oneshot,
-	}
+        oneshot = oneshot,
+    }
 
-    local lis = table.populate_recursive(signal.listeners, listener, emitter, signal_name)
+    signal.listeners[listener] = signal.listeners[listener] or {}
+    signal.listeners[listener][emitter] = signal.listeners[listener][emitter] or {}
+    signal.listeners[listener][emitter][signal_id] = signal.listeners[listener][emitter][signal_id] or {}
+    local lis = signal.listeners[listener][emitter][signal_id]
 
-	assert(lis[function_name] == nil, "connection already exists!")
+    assert(lis[connection_id] == nil, "connection already exists!")
     
-    lis[function_name] = {
+    lis[connection_id] = {
         func = func,
-		oneshot = oneshot,
-	}
-
+        oneshot = oneshot,
+    }
 end
 
-function signal.disconnect(emitter, signal_name, listener, function_name)
+---@param emitter table
+---@param signal_id string | number
+---@param listener table
+---@param connection_id string | number
+function signal.disconnect(emitter, signal_id, listener, connection_id)
     assert(type(emitter) == "table", "emitter is not a table")
     assert(type(listener) == "table", "listener is not a table")
-    assert(type(signal_name) == "string", "signal_name is not a string")
-	assert(type(function_name) == "string", "function_name is not a string")
-    local sig = signal.get(emitter, signal_name)
-	assert(sig ~= nil, "signal " .. signal_name .. "does not exist for object " .. tostring(emitter))
+    local signal_id_type = type(signal_id)
+    local connection_id_type = type(connection_id)
+    assert(signal_id_type == "string" or signal_id_type == "number", "signal_id is not a string or number")
+    assert(connection_id_type == "string" or connection_id_type == "number", "connection_id is not a string or number")
+    
+    local sig = signal.get(emitter, signal_id)
+    if (sig == nil) then error("signal " .. tostring(signal_id) .. " does not exist for object " .. tostring(emitter)) end
 
-	if sig.listeners[listener] ~= nil then  
-		sig.listeners[listener][function_name] = nil
+    if sig.listeners[listener] ~= nil then  
+        sig.listeners[listener][connection_id] = nil
 
-		if table.is_empty(sig.listeners[listener]) then
-			sig.listeners[listener] = nil
-		end
-	end
+        if is_empty(sig.listeners[listener]) then
+            sig.listeners[listener] = nil
+        end
+    end
 
-	local lis = signal.listeners[listener]
+    local lis = signal.listeners[listener]
 
-    -- nil tables to avoid memory leaks
     if lis[emitter] ~= nil then
-        if lis[emitter][signal_name] ~= nil then
-			lis[emitter][signal_name][function_name] = nil
-			if table.is_empty(lis[emitter][signal_name]) then
-				lis[emitter][signal_name] = nil
-			end
-		end
-		if table.is_empty(lis[emitter]) then
-			signal.listeners[listener][emitter] = nil
-		end
-	end
+        if lis[emitter][signal_id] ~= nil then
+            lis[emitter][signal_id][connection_id] = nil
+            if is_empty(lis[emitter][signal_id]) then
+                lis[emitter][signal_id] = nil
+            end
+        end
+        if is_empty(lis[emitter]) then
+            signal.listeners[listener][emitter] = nil
+        end
+    end
 
-	if table.is_empty(lis) then
-		signal.listeners[listener] = nil
-	end
+    if is_empty(lis) then
+        signal.listeners[listener] = nil
+    end
 end
 
-function signal.emit(emitter, signal_name, ...)
-    local sig = signal.get(emitter, signal_name)
-	assert(sig ~= nil, "no signal " .. signal_name .. " for emitter " .. tostring(emitter))
+---@param emitter table
+---@param signal_id string | number
+---@param ... any
+function signal.emit(emitter, signal_id, ...)
+    local sig = signal.get(emitter, signal_id)
+    if sig == nil then error("no signal " .. tostring(signal_id) .. " for emitter " .. tostring(emitter)) end
     for listener, connection in pairs(sig.listeners) do
         for func_name, t in pairs(connection) do
             local func = t.func
             func(...)
             if t.oneshot then
-				signal.disconnect(emitter, signal_name, listener, func_name)
-			end
-		end
-	end
+                signal.disconnect(emitter, signal_id, listener, func_name)
+            end
+        end
+    end
 end
 
+---@type Signal
 return signal
+
+--[[
+DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+Version 2, December 2004
+
+Copyright (C) 2024 Ian Sly
+
+Everyone is permitted to copy and distribute verbatim or modified
+copies of this license document, and changing it is allowed as long
+as the name is changed.
+
+DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+
+0. You just DO WHAT THE FUCK YOU WANT TO.
+--]]

@@ -1,4 +1,4 @@
-local TileMap = Object:extend()
+local TileMap = Object:extend("TileMap")
 
 function TileMap:new(data)
     self.tiles = {}
@@ -43,7 +43,8 @@ function TileMap:iter()
         end
 
         -- Iterate over tiles in the row
-        x_key, tile = x_iter(x_state, x_key)
+        local tile
+		x_key, tile = x_iter(x_state, x_key)
         if not x_key then
             -- If no more tiles, reset and try next row
             x_iter, x_state, x_key = nil, nil, nil
@@ -105,31 +106,34 @@ function TileMap:get_tile(x, y, z)
 end
 
 function TileMap:set_tile(x, y, z, tile_id)
+    if self.tiles[z] == nil then
+        if tile_id == nil then
+            return
+        end
+        self.tiles[z] = {}
+    end
 
-	if self.tiles[z] == nil then
-		if tile_id == nil then
-			return
-		end
-		self.tiles[z] = {}
-	end
+    if self.tiles[z][y] == nil then
+        if tile_id == nil then
+            return
+        end
+        self.tiles[z][y] = {}
+    end
 
-	if self.tiles[z][y] == nil then
-		if tile_id == nil then
-			return
-		end
-		self.tiles[z][y] = {}
-	end
+    self.tiles[z][y][x] = tile_id
 
-	self.tiles[z][y][x] = tile_id
+    if tile_id == nil then
+        if table.is_empty(self.tiles[z][y]) then
+            self.tiles[z][y] = nil
+        end
+        if table.is_empty(self.tiles[z]) then
+            self.tiles[z] = nil
+        end
+    end
+end
 
-	if tile_id == nil then
-		if table.is_empty(self.tiles[z][y]) then
-			self.tiles[z][y] = nil
-		end
-		if table.is_empty(self.tiles[z]) then
-			self.tiles[z] = nil
-		end
-	end
+function TileMap:query_region(startx, starty, startz, endx, endy, endz)
+    return table.query_region(self.tiles, startx, starty, startz, endx, endy, endz)
 end
 
 function TileMap:process_tile_data(z, layer, id, tile)
@@ -153,10 +157,8 @@ function TileMap:process_tile_data(z, layer, id, tile)
 	local tile_string = tile
 	
 	if tileset_id ~= nil and tileset_tile_id ~= nil then
-
 		tile_string = tostring(tileset_id) .. "_" .. tostring(tileset_tile_id)
 	end
-
 
     self:set_tile(x, y, z, tile_string)
 end

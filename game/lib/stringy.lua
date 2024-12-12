@@ -1,5 +1,9 @@
 local stringy = setmetatable({}, {__index = string})
 
+function stringy.startswith(s, e)
+	return string.match(s, "^" .. e) ~= nil
+end
+
 function stringy.endswith(s, e)
 	local result = string.match(s, e.."$")
   return result ~= nil

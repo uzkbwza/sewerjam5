@@ -1,4 +1,4 @@
-local SmoothCameraTarget = GameObject:extend()
+local SmoothCameraTarget = GameObject:extend("SmoothCameraTarget")
 
 function SmoothCameraTarget:new(follow, splerp_half_life_seconds, target_function)
 	local x, y = follow and follow.pos.x or 0, follow and follow.pos.y or 0

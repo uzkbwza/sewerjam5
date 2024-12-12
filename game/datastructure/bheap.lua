@@ -1,2 +1,2 @@
-Bheap = Object:extend()
+Bheap = Object:extend("Bheap")
 

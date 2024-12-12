@@ -93,12 +93,22 @@ function stepify_ceil(s, step)
 	return ceil(s / step) * step
 end
 
+function math.tent(x)
+    return 1 - 2 * math.abs(x - 0.5)
+end
+
+function math.bump(x)
+    return math.cos((x - 0.5) * math.pi)
+end
+
 function stepify_floor_safe(s, step)
+	step = step or 1
 	if step == 0 then return floor(s) end
 	return floor(s / step) * step
 end
 
 function stepify_floor(s, step)
+	step = step or 1
     return floor(s / step) * step
 end
 
@@ -141,6 +151,10 @@ end
 -- Vector functions using Vec2 and Vec3 classes
 function angle_to_vec2(angle)
     return Vec2(cos(angle), sin(angle))
+end
+
+function angle_to_vec2_unpacked(angle)
+	return cos(angle), sin(angle)
 end
 
 -- Exponential decay function (splerp) for scalars

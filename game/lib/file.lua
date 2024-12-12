@@ -48,16 +48,48 @@ function file.filename_to_asset_name(filename, extension, prefix)
 	return string.sub(string.gsub(string.match(filename, "/(.+)." .. extension .. "$"), "/", "_"), #prefix + 1)
 end
 
-function file.get_modules(path, t)
+---@alias FileSystem.GetModulesRecursionType "none" | "all" | "init"
+---@param path string
+---@param recursive? FileSystem.GetModulesRecursionType
+---@param t? table
+---@param path_prefix? string
+function file.get_modules(path, recursive, t, path_prefix)
+	recursive = recursive or "none"
+
+    if recursive ~= "none" and recursive ~= "all" and recursive ~= "init" then
+        error("incorrect recursion type: " .. tostring(recursive))
+    end
+	
+    path_prefix = path_prefix or ""
+	
 	t = t or {}
 	for _, v in ipairs(love.filesystem.getDirectoryItems(path)) do
-		if v:sub(-4) == ".lua" then
-			local s = v:sub(1, -5)
-			if s == "init" then 
-				goto continue
+        if v:sub(-4) == ".lua" then
+            local s = v:sub(1, -5)
+            if s == "init" and path_prefix == "" then
+                goto continue
+            end
+
+            if s ~= "init" and recursive == "init" then
+                goto continue
+            end
+			
+	            local mod = require(path:gsub("/", ".") .. "." .. s)
+            
+            local tab = string.split(path_prefix, ".")
+			if s ~= "init" then
+				table.insert(tab, s)
 			end
-			local mod = require(path .. "." .. v:sub(1, -5))
-			t[s] = mod
+            table.insert(tab, mod)
+            table.populate_recursive_from_table(t, tab)
+        end
+		if recursive then 
+            local info = love.filesystem.getInfo(path .. "/" .. v)
+            if info and info.type == "directory" then
+                local prefix = v
+				if path_prefix ~= "" then prefix = "." .. prefix end
+				file.get_modules(path .. "/" .. v, recursive, t, prefix)
+			end
 		end
 		::continue::
 	end
@@ -87,6 +119,13 @@ function file.load_file_native(path)
     local file = nativefs.newFile(fp)
     file:open("r")
 	return file:read()
+end
+
+function file.save_file(data, path)
+	local file = love.filesystem.newFile(path)
+	file:open("w")
+	file:write(data)
+	file:close()
 end
 
 function file.save_file_native(data, path)
@@ -120,4 +159,3 @@ function file.save_image(image, name)
 end
 
 return file
-

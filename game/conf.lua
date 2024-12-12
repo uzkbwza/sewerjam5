@@ -11,10 +11,9 @@ usersettings = require "usersettings"
 require "lib.mathy"
 require "lib.vector"
 require "lib.rect"
-require "lib.sequencer"
 require "lib.random_crap"
-require "lib.color"
-
+require "lib.sequencer"
+require "physics_layers"
 
 require "lib.anim"
 
@@ -31,22 +30,25 @@ if IS_DEBUG then
 end
 
 local conf = {
+    -- game settings
+    room_size = Vec2(
+        256,
+		192
+	),
+
 	-- display
 	viewport_size = Vec2(
-	240,
-	160
-        -- 384,
-		-- 216
-
+		256,
+		192
 	),
-	display_scale = 3,
+	display_scale = 4,
 
 	-- delta
 	use_fixed_delta = false,
 	fixed_tickrate = 60,
-    max_delta_seconds = 0.05,
-	max_fps = 500,
-	max_fixed_ticks_per_frame = 10,
+    max_delta_seconds = 1/60,
+	max_fps = 900,
+    max_fixed_ticks_per_frame = 1,
 
 	-- input
 	input_actions = {
@@ -66,39 +68,55 @@ local conf = {
 		},
 
 		move_up = {
-			keyboard = {"up"},
-			joystick = {"dpup"},
-			joystick_axis = {
-				axis = "lefty",
-				dir = -1
-			}
+			keyboard = {"w"},
+			-- joystick = {"dpup"},
+			-- joystick_axis = {
+			-- 	axis = "lefty",
+			-- 	dir = -1
+			-- }
 		},
 
 		move_down = {
-			keyboard = {"down"},
-			joystick = {"dpdown"},
-			joystick_axis = {
-				axis = "lefty",
-				dir = 1
-			}
+			keyboard = {"s"},
+			-- joystick = {"dpdown"},
+			-- joystick_axis = {
+			-- 	axis = "lefty",
+			-- 	dir = 1
+			-- }
 		},
 
 		move_left = {
-			keyboard = {"left"},
-			joystick = {"dpleft"},
-			joystick_axis = {
-				axis = "leftx",
-				dir = -1
-			}
+			keyboard = {"a"},
+			-- joystick = {"dpleft"},
+			-- joystick_axis = {
+			-- 	axis = "leftx",
+			-- 	dir = -1
+			-- }
 		},
 
 		move_right = {
+			keyboard = {"d"},
+			-- joystick = {"dpright"},
+			-- joystick_axis = {
+			-- 	axis = "leftx",
+			-- 	dir = 1
+			-- }
+		},
+
+		aim_up = {
+			keyboard = {"up"},
+		},
+
+		aim_down = {
+			keyboard = {"down"},
+        },
+		
+		aim_left = {
+			keyboard = {"left"},
+		},
+
+		aim_right = {
 			keyboard = {"right"},
-			joystick = {"dpright"},
-			joystick_axis = {
-				axis = "leftx",
-				dir = 1
-			}
 		},
 
 		fullscreen_toggle = {
@@ -148,8 +166,15 @@ local conf = {
 			right = "move_right",
 			up = "move_up",
 			down = "move_down",
+        },
+		aim = {
+			left = "aim_left",
+			right = "aim_right",
+			up = "aim_up",
+			down = "aim_down",
 		}
 	},
+
 }
 
 -- https://love2d.org/wiki/Config_Files
@@ -160,8 +185,9 @@ function love.conf(t)
 	t.console               = false
 	t.accelerometerjoystick = false
 	t.externalstorage       = false
-	t.gammacorrect          = false
-
+    t.gammacorrect          = false
+	-- t.renderers = {"vulkan"}
+	
 	t.audio.mic             = false
 	t.audio.mixwithsystem   = true
 
@@ -176,14 +202,19 @@ function love.conf(t)
 	t.window.minwidth       = conf.viewport_size.x
 	t.window.minheight      = conf.viewport_size.y
 	t.window.fullscreen     = false
-	t.window.fullscreentype = "desktop"
-	t.window.vsync          = 0
+    t.window.fullscreentype = "desktop"
+	if usersettings.vsync then
+        t.window.vsync = -1
+    else
+		t.window.vsync = 0
+	end
+	-- t.window.vsync
 	t.window.msaa           = 0
 	t.window.depth          = nil
 	t.window.stencil        = nil
-	t.window.display        = 1
-	t.window.highdpi        = false
-	t.window.usedpiscale    = true
+	t.window.displayindex    = 1
+	-- t.window.highdpi        = false
+	-- t.window.usedpiscale    = true
 	t.window.x              = nil
 	t.window.y              = nil
 

@@ -1,4 +1,5 @@
 local utf8 = require "utf8"
+require "lib.color"
 
 
 local graphics = {
@@ -11,16 +12,17 @@ local graphics = {
 	textures = nil,
 	texture_data = nil,
 	sprite_paths = nil,
-	screen_stack = nil,
+	layer_tree = nil,
 	interp_fraction = 0,
 	shader = require "shader.shader",
 	main_canvas_start_pos = Vec2(0, 0),
 	main_canvas_size = Vec2(0, 0),
 	main_canvas_scale = 1,
     main_viewport_size = Vec2(0, 0),
-	window_size = Vec2(0, 0),
-	-- palette = nil,
-	bg_image = nil,
+    window_size = Vec2(0, 0),
+	screen_rumble_intensity = 0,
+    bg_image = nil,
+	circles = {}
 }
 
 graphics = setmetatable(graphics, { __index = love.graphics })
@@ -91,16 +93,20 @@ function graphics.load()
 	graphics.set_blend_mode("alpha")
 	graphics.set_line_style("rough")
 	graphics.set_canvas()
-	-- graphics.sequencer:start(function()
-	-- 	load_textures(true)
-	-- end)
+
+    -- local start = love.timer.getTime()
+	-- local n = 100
+    -- for i = 1, n do
+    --     graphics.circles[i] = midpoint_circle(i)
+    -- end
+	-- print(string.format("i=%s, time=%s", n, love.timer.getTime() - start))
 
 	graphics.load_textures(false)
 
 	graphics.set_screen_shaders({
         -- graphics.shader.basic
 		{ shader = graphics.shader.blur, args = {} },
-		{ shader = graphics.shader.screenfilter, args = {} },
+		-- { shader = graphics.shader.screenfilter, args = {} },
 		{ shader = graphics.shader.lcd, args = { pixel_texture = graphics.textures.pixeltexture } },
 		{ shader = graphics.shader.aberration, args = {} },
 		-- graphics.shader.lcd,
@@ -120,43 +126,20 @@ function graphics.load()
 	graphics.font.main = graphics.font["PixelOperator-Bold"]
     graphics.set_font(graphics.font.main)
 	
-	palette = graphics.palette
 	textures = graphics.textures
 end
 
-function graphics.color_from_html(str)
-	return Color(
-		tonumber("0x" .. string.sub(str, 1, 2)) / 255,
-		tonumber("0x" .. string.sub(str, 3, 4)) / 255,
-		tonumber("0x" .. string.sub(str, 5, 6)) / 255,
-		1)
-end
+-- local ordered_draw = {}
 
 function graphics.game_draw()
 	graphics.push()
 
-	local ordered_draw = {}
+    local update_interp = true
+	
+	local layer = graphics.layer_tree
 
-	local update_interp = true
-	for _, screen in ipairs(graphics.screen_stack) do
-		if update_interp then
-			screen.interp_fraction = update_interp and graphics.interp_fraction or screen.interp_fraction
-		end
-
-		table.insert(ordered_draw, screen)
-
-		if screen.blocks_logic then
-			update_interp = false
-		end
-
-		if screen.blocks_render then
-			break
-		end
-	end
-
-	for i = #ordered_draw, 1, -1 do
-		ordered_draw[i]:draw_shared()
-	end
+    layer.interp_fraction = update_interp and graphics.interp_fraction or layer.interp_fraction
+	layer:draw_shared()
 
 	graphics.pop()
 end
@@ -189,13 +172,38 @@ function graphics.screen_pos_to_canvas_pos(sposx, sposy)
 		((sposy - graphics.main_canvas_start_pos.y) / graphics.main_canvas_scale)
 end
 
-function graphics.update(dt)
-	graphics.sequencer:update(dt)
-	if input.fullscreen_toggle_pressed then
-		love.window.setFullscreen(not love.window.getFullscreen())
-	end
+local flash_table = {
+    Color.from_hex("44891a"),
+    Color.from_hex("be2633"),
+    Color.from_hex("f7e26b"),
+    Color.from_hex("31a2f2"),
+    Color.from_hex("e06f8b"),
+    Color.from_hex("eb8931"),
+    Color.from_hex("b2dcef"),
+    Color.from_hex("a3ce27"),
+    Color.from_hex("ffffff"),	
+}
+
+function graphics.color_flash(offset, tick_length)
+    local color = flash_table[floor((gametime.ticks / tick_length) % #flash_table) + 1]
+	return color
 end
 
+
+function graphics.start_rumble(intensity, duration, easing_function)
+    local s = graphics.sequencer
+    if graphics.rumble_coroutine then
+        s:stop(graphics.rumble_coroutine)
+    end
+	
+    easing_function = easing_function or ease("outQuad")
+    graphics.rumble_coroutine = s:start(function()
+	
+        s:tween_property(graphics, "screen_rumble_intensity", intensity * usersettings.screen_shake_amount, 0, duration, easing_function)
+        graphics.rumble_coroutine = nil
+		graphics.screen_rumble_intensity = 0
+    end)
+end
 
 function graphics.draw_loop()
 	local wsx, wsy = graphics.get_dimensions()
@@ -222,8 +230,20 @@ function graphics.draw_loop()
 	max_width_scale = process(window_size.x / viewport_size.x)
 	max_height_scale = process(window_size.y / viewport_size.y)
 	viewport_pixel_scale = process(math.min(max_width_scale, max_height_scale))
-	canvas_size = viewport_size * viewport_pixel_scale
-    canvas_pos = window_size / 2 - (canvas_size) / 2
+	canvas_size.x = viewport_size.x * viewport_pixel_scale
+	canvas_size.y = viewport_size.y * viewport_pixel_scale
+    canvas_pos.x = window_size.x / 2 - (canvas_size.x) / 2
+    canvas_pos.y = window_size.y / 2 - (canvas_size.y) / 2
+
+	if graphics.screen_rumble_intensity > 0 then
+		local dx, dy = rng.random_vec2()
+		local rumble_offset_x, rumble_offset_y = (dx * rng.randf(graphics.screen_rumble_intensity*0.5, graphics.screen_rumble_intensity)), (dy * rng.randf(graphics.screen_rumble_intensity*0.5, graphics.screen_rumble_intensity))
+        canvas_pos.x = canvas_pos.x + rumble_offset_x * viewport_pixel_scale
+		canvas_pos.y = canvas_pos.y + rumble_offset_y * viewport_pixel_scale
+	end
+
+
+
     viewport_size_shader[1] = viewport_size.x
     viewport_size_shader[2] = viewport_size.y
     canvas_pos_shader[1] = canvas_pos.x
@@ -231,11 +251,14 @@ function graphics.draw_loop()
     canvas_size_shader[1] = canvas_size.x
 	canvas_size_shader[2] = canvas_size.y
 
-	graphics.main_canvas_start_pos = canvas_pos
-	graphics.main_canvas_size = canvas_size
+	graphics.main_canvas_start_pos.x = canvas_pos.x
+	graphics.main_canvas_start_pos.y = canvas_pos.y
+	graphics.main_canvas_size.x = canvas_size.x
+	graphics.main_canvas_size.y = canvas_size.y
 	graphics.main_canvas_scale = viewport_pixel_scale
 	graphics.main_viewport_size = viewport_size
-	graphics.window_size = window_size
+	graphics.window_size.x = window_size.x
+	graphics.window_size.y = window_size.y
 
 	if graphics.pre_canvas_draw_function then
 		graphics.pre_canvas_draw_function()
@@ -332,6 +355,10 @@ end
 
 --- love API wrappers
 function graphics.set_color(r, g, b, a)
+	if type(r) == "string" then
+		graphics.set_color(Color.from_hex_unpack(r))
+		return
+	end
 	if type(r) == "table" then
 		if g ~= nil then
 			a = g
@@ -376,12 +403,15 @@ function graphics.new_sprite_batch(texture, size, usage)
 	return love.graphics.newSpriteBatch(texture, size, usage)
 end
 
--- function graphics.draw(texture, quad, x, y, r, sx, sy, ox, oy, kx, ky)
---     if texture == nil then
---         return
---     end
--- 	love.graphics.draw(texture, quad, x, y, r, sx, sy, ox, oy, kx, ky)
--- end
+function graphics.draw(texture, x, y, r, sx, sy, ox, oy, kx, ky)
+    -- remove this if you arent using sprite sheets
+	if texture == nil then return end
+	if texture.__isquad then
+		love.graphics.draw(texture.texture, texture.quad, x, y, r, sx, sy, ox, oy, kx, ky)
+	else
+		love.graphics.draw(texture, x, y, r, sx, sy, ox, oy, kx, ky)
+	end
+end
 
 function graphics.draw_cover(texture, start_x, start_y, end_x, end_y)
 	local tex_width = texture:getWidth()
@@ -408,7 +438,7 @@ function graphics.draw_cover(texture, start_x, start_y, end_x, end_y)
 	local offset_y = (new_tex_height - (end_y - start_y)) / 2
 
 	-- Draw the texture, adjusting the position to center it if necessary
-	love.graphics.draw(texture, start_x - offset_x, start_y - offset_y, 0, scale, scale)
+	graphics.draw(texture, start_x - offset_x, start_y - offset_y, 0, scale, scale)
 end
 
 function graphics.draw_fit(texture, start_x, start_y, end_x, end_y)
@@ -436,23 +466,35 @@ function graphics.draw_fit(texture, start_x, start_y, end_x, end_y)
 	local offset_y = (new_tex_height - (end_y - start_y)) / 2
 
 	-- Draw the texture, adjusting the position to center it if necessary
-	love.graphics.draw(texture, start_x - offset_x, start_y - offset_y, 0, scale, scale)
+	graphics.draw(texture, start_x - offset_x, start_y - offset_y, 0, scale, scale)
 end
 
 function graphics.get_canvas()
 	return love.graphics.getCanvas()
 end
 
+function graphics.draw_quad_centered(texture, quad, width, height, x, y, r, sx, sy, ox, oy, kx, ky)
+	ox = ox or 0
+	oy = oy or 0
+	local offset_x = width / 2
+	local offset_y = height / 2
+	graphics.draw(texture, quad, x, y, r, sx, sy, ox + offset_x, oy + offset_y, kx, ky)
+
+end
+
 function graphics.draw_centered(texture, x, y, r, sx, sy, ox, oy, kx, ky)
-	if texture == nil then
-		return
+
+	if texture == nil then return end
+
+	if texture.__isquad then
+		return graphics.draw_quad_centered(texture.texture, texture.quad, texture.width, texture.height, x, y, r, sx, sy, ox, oy, kx, ky)
 	end
 
 	ox = ox or 0
 	oy = oy or 0
-	local offset_x = texture:getWidth() / 2
-	local offset_y = texture:getHeight() / 2
-	love.graphics.draw(texture, x, y, r, sx, sy, ox + offset_x, oy + offset_y, kx, ky)
+	local offset_x = round(texture:getWidth() / 2)
+	local offset_y = round(texture:getHeight() / 2)
+	graphics.draw(texture, x, y, r, sx, sy, ox + offset_x, oy + offset_y, kx, ky)
 end
 
 function graphics.clear(r, g, b, a)
@@ -507,24 +549,36 @@ function graphics.new_image_data(path)
 end
 
 function graphics.points(...)
-	love.graphics.points(...)
+love.graphics.points(...)
 end
 
 function graphics.circle(mode, x, y, radius, segments)
+	-- radius = floor(radius)
+	-- local r = floor(radius)
+    -- if mode == "line" and graphics.circles[radius] then
+
+	-- 	love.graphics.points(graphics.circles[radius])
+
+	-- 	return
+	-- end
 	love.graphics.circle(mode, x, y, radius, segments)
 end
 
-function graphics.rectangle(mode, x, y, width, height)
-	love.graphics.rectangle(mode, x, y, width, height)
+function graphics.rect(mode, rect)
+	love.graphics.rectangle(mode, rect.x, rect.y, rect.width, rect.height)
 end
 
-function graphics.line(x1, y1, x2, y2, ...)
-	love.graphics.line(x1, y1, x2, y2, ...)
-end
+-- function graphics.rectangle(mode, x, y, width, height)
+-- 	love.graphics.rectangle(mode, x, y, width, height)
+-- end
 
-function graphics.polygon(mode, ...)
-	love.graphics.polygon(mode, ...)
-end
+-- function graphics.line(x1, y1, x2, y2, ...)
+-- 	love.graphics.line(x1, y1, x2, y2, ...)
+-- end
+-- function graphics.polygon(mode, ...)
+
+-- 	love.graphics.polygon(mode, ...)
+-- end
 
 function graphics.print(text, x, y, r, sx, sy, ox, oy, kx, ky)
 	graphics.push()
@@ -535,11 +589,22 @@ end
 
 function graphics.print_outline(outline_color, text, x, y, r, sx, sy, ox, oy, kx, ky)
     graphics.push("all")
-    graphics.set_color(outline_color)
     love.graphics.print(text, x + 1, y + 1, r, sx, sy, ox, oy, kx, ky)
+    graphics.set_color(outline_color)
     love.graphics.print(text, x - 1, y - 1, r, sx, sy, ox, oy, kx, ky)
     love.graphics.print(text, x + 1, y - 1, r, sx, sy, ox, oy, kx, ky)
     love.graphics.print(text, x - 1, y + 1, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x + 1, y, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x - 1, y, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x, y + 1, r, sx, sy, ox, oy, kx, ky)
+    love.graphics.print(text, x, y - 1, r, sx, sy, ox, oy, kx, ky)
+    graphics.pop()
+    love.graphics.print(text, x, y, r, sx, sy, ox, oy, kx, ky)
+end
+
+function graphics.print_outline_no_diagonals(outline_color, text, x, y, r, sx, sy, ox, oy, kx, ky)
+	graphics.push("all")
+    graphics.set_color(outline_color)
     love.graphics.print(text, x + 1, y, r, sx, sy, ox, oy, kx, ky)
     love.graphics.print(text, x - 1, y, r, sx, sy, ox, oy, kx, ky)
     love.graphics.print(text, x, y + 1, r, sx, sy, ox, oy, kx, ky)
@@ -571,11 +636,13 @@ function graphics.dashrect(x, y, w, h, dash, gap)
 end
 
 function graphics.draw_collision_box(rect, color, alpha)
-	alpha = alpha or 1
+    alpha = alpha or 1
+	love.graphics.push("all")
+	love.graphics.setColor(color.r, color.g, color.b, alpha * 0.25)
+	love.graphics.rectangle("fill", rect.x + 1, rect.y + 1, rect.width - 1, rect.height - 1)
 	love.graphics.setColor(color.r, color.g, color.b, alpha * 0.5)
-	love.graphics.rectangle("fill", rect.x, rect.y, rect.width, rect.height)
-	love.graphics.setColor(color.r, color.g, color.b, alpha)
-	love.graphics.rectangle("line", rect.x, rect.y, rect.width, rect.height)
+    love.graphics.rectangle("line", rect.x + 1, rect.y + 1, rect.width - 1, rect.height - 1)
+	love.graphics.pop()
 end
 
 function graphics.reset()
@@ -585,42 +652,5 @@ end
 function graphics.set_shader(shader)
 	love.graphics.setShader(shader)
 end
-
-graphics.palette = {
-	black = graphics.color_from_html("02040a"),
-	white = graphics.color_from_html("ffffff"),
-	lightred = graphics.color_from_html("f7aaaa"),
-	brown = graphics.color_from_html("883425"),
-	terracotta = graphics.color_from_html("ca6845"),
-	peach = graphics.color_from_html("ffd8b3"),
-	orange = graphics.color_from_html("ff8800"),
-	gold = graphics.color_from_html("f6c319"),
-	hazel = graphics.color_from_html("856e13"),
-	puke = graphics.color_from_html("a6ac17"),
-	yellow = graphics.color_from_html("f3f967"),
-	lime = graphics.color_from_html("9feb26"),
-	forest = graphics.color_from_html("1e7f44"),
-	turquoise = graphics.color_from_html("83eec6"),
-	seagreen = graphics.color_from_html("0dcc8b"),
-	darkgreen = graphics.color_from_html("00261b"),
-	skyblue = graphics.color_from_html("82c6ff"),
-	darkskyblue = graphics.color_from_html("3c95e9"),
-	blue = graphics.color_from_html("151e2f"),
-	navyblue = graphics.color_from_html("0d1c4a"),
-	darkblue = graphics.color_from_html("151e2f"),
-	darkgreyblue = graphics.color_from_html("474c6c"),
-	greyblue = graphics.color_from_html("646dac"),
-	lilac = graphics.color_from_html("b488ff"),
-	darkpurple = graphics.color_from_html("472b6d"),
-	purple = graphics.color_from_html("7521e3"),
-	pink = graphics.color_from_html("e5baf3"),
-	magenta = graphics.color_from_html("d655db"),
-	maroon = graphics.color_from_html("820b2e"),
-	salmon = graphics.color_from_html("f17589"),
-	red = graphics.color_from_html("e2383d"),
-	darkred = graphics.color_from_html("420a0b"),
-}
-
-graphics.palette.green = graphics.color_from_html("9feb26")
 
 return graphics

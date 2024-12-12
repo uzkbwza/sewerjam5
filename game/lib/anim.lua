@@ -1,4 +1,4 @@
-Animation = Object:extend()
+Animation = Object:extend("Animation")
 --[[
 local a = Animation(
 		1, textures.ball1,
@@ -47,6 +47,9 @@ function Animation.from_sequence(tex_name, start_tex, finish_tex, frame_duration
 end
 
 function Animation:get_frame(delta, loop_type)
+    if delta < 1 then
+        error("delta must be greater than or equal to 1")	
+	end
 	local frame_number = 1
 	if loop_type == nil then
 		frame_number = floor(delta)

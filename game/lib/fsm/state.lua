@@ -1,4 +1,4 @@
-local State = Object:extend()
+local State = Object:extend("State")
 
 function State.dummy()
 end
@@ -7,7 +7,8 @@ function State._create(...)
 	return State(...)
 end
 
-function State:new(table)
+function State:new(name, table, add_transition_function)
+
 	for _, unimplemented in ipairs({
 		"enter",
 		"exit",
@@ -18,11 +19,20 @@ function State:new(table)
 		self[unimplemented] = State.dummy
 	end
 
-	local go = function(to, ...) self:transition(to, ...) end
+	self.name = name
+
+	local go = nil
+	if add_transition_function then
+		go = function(to, ...) self:transition(to, ...) end
+	end
 
     for k, v in pairs(table) do
         if type(v) == "function" then
-            self[k] = function(...) v(go, ...) end
+			if go then
+				self[k] = function(...) v(go, ...) end
+			else
+				self[k] = v
+			end
         else
             self[k] = v
         end

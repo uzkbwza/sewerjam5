@@ -39,6 +39,64 @@ function unrequire(m)
     return true
 end
 
+function midpoint_circle(radius)
+    resolution = resolution or 0
+
+	local r2 = radius * radius
+
+	local t = {}
+
+    local x = -1
+	local y = -radius
+    while x <= -y do
+		x = x + 1
+        table.insert(t, x)
+        table.insert(t, y)
+		
+		table.insert(t, -x)
+        table.insert(t, y)
+        
+		table.insert(t, x)
+        table.insert(t, -y)
+        
+		table.insert(t, -x)
+        table.insert(t, -y)
+		
+		table.insert(t, y)
+        table.insert(t, x)
+		
+        table.insert(t, -y)
+        table.insert(t, x)
+		
+        table.insert(t, y)
+        table.insert(t, -x)
+		
+        table.insert(t, -y)
+        table.insert(t, -x)
+		
+		local ymid = (y + 0.5)
+		
+		if (x*x + ymid*ymid > r2) then
+			y = y + 1
+		end
+	end
+
+	return t
+end
+
+function neighbors(x, y)
+	return {
+		Vec2(x - 1, y),
+		Vec2(x + 1, y),
+		Vec2(x, y - 1),
+        Vec2(x, y + 1),
+		Vec2(x - 1, y - 1),
+		Vec2(x + 1, y - 1),
+		Vec2(x - 1, y + 1),
+		Vec2(x + 1, y + 1),
+	}
+end
+
 function frames_to_seconds(n)
 	return n / 60
 end
@@ -55,6 +113,52 @@ function id_to_xy(id, width)
 	local x = (id - 1) % width + 1
 	local y = math.floor((id - 1) / width) + 1
 	return x, y
+end
+
+function xy_to_pairing(x, y)
+    x = floor(x)
+    y = floor(y)
+    x = x >= 0 and (2 * x) or (-2 * x) - 1
+    y = y >= 0 and (2 * y) or (-2 * y) - 1
+
+    -- cantor pairing function
+    local id = (x + y) * (x + y + 1) * 0.5 + y
+
+    return id
+end
+
+function pairing_to_xy(id)
+    -- Reverse the Cantor pairing function
+    local t = math.floor((-1 + math.sqrt(1 + 8 * id)) * 0.5)
+    local y = id - t * (t + 1) * 0.5
+    local x = t - y
+
+    -- Reverse the mapping for x and y
+    x = (x % 2 == 0) and (x / 2) or -(x + 1) / 2
+    y = (y % 2 == 0) and (y / 2) or -(y + 1) / 2
+
+    return x, y
+end
+
+function world_to_room_id(x, y)
+    return xy_to_pairing(x / conf.room_size.x, y / conf.room_size.y)
+end
+
+function world_to_room(x, y)
+    return x / conf.room_size.x, y / conf.room_size.y
+end
+
+function room_to_world(x, y)
+    return x * conf.room_size.x, y * conf.room_size.y
+end
+
+function room_id_to_room(id)
+	return pairing_to_xy(id)
+end
+
+function room_id_to_world(id)
+    local rx, ry = pairing_to_xy(id)
+	return room_to_world(rx, ry)
 end
 
 function flood_fill(x, y, fill, check_solid, force_first)
@@ -188,6 +292,58 @@ function bresenham_line(x0, y0, x1, y1, callback)
     return points
 end
 
+function bresenham_line_iter(x0, y0, x1, y1)
+    local sx, sy, dx, dy
+
+    if x0 < x1 then
+        sx = 1
+        dx = x1 - x0
+    else
+        sx = -1
+        dx = x0 - x1
+    end
+
+    if y0 < y1 then
+        sy = 1
+        dy = y1 - y0
+    else
+        sy = -1
+        dy = y0 - y1
+    end
+
+    local err = dx - dy
+
+    local current_x, current_y = x0, y0
+
+    local done = false
+
+    return function()
+        if done then
+            return nil
+        end
+
+        local px, py = current_x, current_y
+
+        if current_x == x1 and current_y == y1 then
+            done = true
+        else
+            local e2 = err * 2
+
+            if e2 > -dy then
+                err = err - dy
+                current_x = current_x + sx
+            end
+
+            if e2 < dx then
+                err = err + dx
+                current_y = current_y + sy
+            end
+        end
+
+        return px, py
+    end
+end
+
 function xassert(a, ...)
 	if a then return a, ... end
 	local f = ...
@@ -199,3 +355,9 @@ function xassert(a, ...)
 	  error(f or "assertion failed!", 2)
 	end
   end
+
+function xtype(t)
+	local s = type(t)
+	if s == "table" and t.__type_name then return t.__type_name() end
+	return s
+end

@@ -3,7 +3,7 @@
 local RED = false
 local BLACK = true
 
-Rbt = Object:extend()
+Rbt = Object:extend("Rbt")
 
 local function default_sort(a, b)
     return a < b

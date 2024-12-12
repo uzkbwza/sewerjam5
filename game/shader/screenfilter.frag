@@ -6,7 +6,7 @@ uniform float rgb_amount = 0.15;
 uniform float rgb_brightness = 4.55;
 uniform float border_size = 150.0;
 uniform float border_feather = 0.5;
-uniform float border_amount = 0.0; // 0.5
+uniform float border_amount = 0.5; // 0.5
 uniform float correction = 0.8;
 uniform float roundness = 1;
 

@@ -1,4 +1,4 @@
-Bst = Object:extend()
+Bst = Object:extend("Bst")
 
 
 local function default_sort(a, b)

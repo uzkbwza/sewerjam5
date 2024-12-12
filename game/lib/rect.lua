@@ -1,5 +1,5 @@
 ---@diagnostic disable: lowercase-global
-Rect = Object:extend()
+Rect = Object:extend("Rect")
 
 function Rect:new(x, y, width, height)
     self.x = x or 0
@@ -13,12 +13,20 @@ function Rect.centered(x, y, width, height)
 	return Rect(x - width / 2, y - height / 2, width, height)
 end
 
+function Rect:to_centered()
+	return Rect.centered(self.x, self.y, self.width, self.height)
+end
+
+function Rect:ends()
+	return self.x + self.width, self.y + self.height
+end
+
 function Rect:center_to(x, y, width, height)
-	self.width = width or self.width
-	self.height = height or self.height
-	self.x = x - self.width / 2
-	self.y = y - self.height / 2
-	return self
+    self.width = width or self.width
+    self.height = height or self.height
+    self.x = x - self.width / 2
+    self.y = y - self.height / 2
+    return self
 end
 
 

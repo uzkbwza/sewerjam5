@@ -6,6 +6,14 @@ function tabley.length (t)
   return count
 end
 
+function tabley.find(t, value)
+	for i, v in ipairs(t) do
+		if v == value then
+			return i
+		end
+	end
+end
+
 function tabley.push_back(t, value)
   table.insert(t, value)
 end
@@ -25,10 +33,80 @@ end
 function tabley.clear(t)
     local next = next
     local i, _ = next(t)
-	while i do 
-		t[i] = nil
-		i, _ = next(t)
-	end
+    while i do
+        t[i] = nil
+        i, _ = next(t)
+    end
+end
+
+local function manipulate_coords_identity(x, y, z)
+	return x, y, z
+end
+
+---@overload fun(t: table, startx: number, starty: number, endx: number, endy: number)
+---@param t table
+---@param startx number
+---@param starty number
+---@param startz number
+---@param endx number
+---@param endy number
+---@param endz number
+function tabley.query_region(t, startx, starty, startz, endx, endy, endz, manipulate_coords, manipulate_object)
+    manipulate_coords = manipulate_coords or manipulate_coords_identity
+	manipulate_object = manipulate_object or identity_function
+    if endy == nil then
+        -- 2D case
+        endy = endx
+        endx = startz
+        local state = { x = startx, y = starty }
+        return function()
+            while state.y <= endy do
+                local row = t[state.y]
+                if row then
+                    while state.x <= endx do
+                        local tile = row[state.x]
+                        local x = state.x
+                        state.x = state.x + 1
+                        if tile then
+							local x_, y_ = manipulate_coords(x, state.y)
+                            return x_, y_, manipulate_object(tile)
+                        end
+                    end
+                end
+                state.x = startx
+                state.y = state.y + 1
+            end
+        end
+    else
+        -- 3D case
+        local state = { x = startx, y = starty, z = startz }
+        return function()
+            while state.z <= endz do
+                local layer = t[state.z]
+                if layer then
+                    while state.y <= endy do
+                        local row = layer[state.y]
+                        if row then
+                            while state.x <= endx do
+                                local tile = row[state.x]
+                                local x = state.x
+                                state.x = state.x + 1
+                                if tile then
+									local x_, y_, z_ = manipulate_coords(x, state.y, state.z)
+                                    return x_, y_, z_, manipulate_object(tile)
+                                end
+                            end
+                        end
+                        state.x = startx
+                        state.y = state.y + 1
+                    end
+                end
+                state.x = startx
+                state.y = starty
+                state.z = state.z + 1
+            end
+        end
+    end
 end
 
 function tabley.push(t, value)
@@ -90,50 +168,116 @@ function tabley.deepcopy(orig, copies)
 	return copy
 end
 
-function tabley.pretty_print(t, max_depth, fd)
-	max_depth = max_depth or math.huge
-    fd = fd or io.stdout
-    local function print(str)
-       str = str or ""
-       fd:write(str.."\n")
+function tabley.pretty_format(t, max_depth)
+    max_depth = max_depth or math.huge
+    local str = ""
+    local function print(s)
+        s = s or ""
+        str = str .. s .. "\n"
     end
-    local print_r_cache={}
-    local function sub_print_r(t,indent, depth)
-		depth = depth or 0
-		if depth >= max_depth then 
-			print(indent.."..." )
-			return 
-		end
+    local print_r_cache = {}
+    local function sub_print_r(t, indent, depth)
+        depth = depth or 0
+        if depth >= max_depth then
+            print(indent .. "...")
+            return
+        end
         if (print_r_cache[tostring(t)]) then
-            print(indent.."*"..tostring(t))
+            print(indent .. "*" .. tostring(t))
         else
-            print_r_cache[tostring(t)]=true
-            if (type(t)=="table") then
-                for pos,val in pairs(t) do
-					pos = tostring(pos)
-                    if (type(val)=="table") then
-                        print(indent.."["..pos.."] => "..tostring(t).." {")
-                        sub_print_r(val,indent..string.rep(" ",string.len(pos)+8), depth + 1)
-                        print(indent..string.rep(" ",string.len(pos)+6).."}")
-                    elseif (type(val)=="string") then
-                        print(indent.."["..pos..'] => "'..val..'"')
+            print_r_cache[tostring(t)] = true
+            if (type(t) == "table") then
+                for pos, val in pairs(t) do
+                    pos = tostring(pos)
+                    if (type(val) == "table") then
+                        print(indent .. "[" .. pos .. "] => " .. tostring(t) .. " {")
+                        sub_print_r(val, indent .. string.rep(" ", string.len(pos) + 8), depth + 1)
+                        print(indent .. string.rep(" ", string.len(pos) + 6) .. "}")
+                    elseif (type(val) == "string") then
+                        print(indent .. "[" .. pos .. '] => "' .. val .. '"')
                     else
-                        print(indent.."["..pos.."] => "..tostring(val))
+                        print(indent .. "[" .. pos .. "] => " .. tostring(val))
                     end
                 end
             else
-                print(indent..tostring(t))
+                print(indent .. tostring(t))
             end
         end
     end
-    if (type(t)=="table") then
-        print(tostring(t).." {")
-        sub_print_r(t,"  ")
+    if (type(t) == "table") then
+        print(tostring(t) .. " {")
+        sub_print_r(t, " ")
         print("}")
     else
-        sub_print_r(t,"  ")
+        sub_print_r(t, " ")
     end
     print()
+    return str
+end
+
+function tabley.get_recursive(t, ...)
+	local keys = { ... }
+	local value = t
+	for i = 1, #keys do
+		value = value[keys[i]]
+		if value == nil then
+			return nil
+		end
+	end
+	return value
+end
+
+function tabley.pretty_print(t, max_depth, fd)
+    max_depth = max_depth or math.huge
+    fd = fd or io.stdout
+    local function print(str)
+        str = str or ""
+        fd:write(str .. "\n")
+    end
+    local print_r_cache = {}
+    local function sub_print_r(t, indent, depth)
+        depth = depth or 0
+        if depth >= max_depth then
+            print(indent .. "...")
+            return
+        end
+        if (print_r_cache[tostring(t)]) then
+            print(indent .. "*" .. tostring(t))
+        else
+            print_r_cache[tostring(t)] = true
+            if (type(t) == "table") then
+                for pos, val in pairs(t) do
+                    pos = tostring(pos)
+                    if (type(val) == "table") then
+                        print(indent .. "[" .. pos .. "] => " .. tostring(t) .. " {")
+                        sub_print_r(val, indent .. string.rep(" ", string.len(pos) + 8), depth + 1)
+                        print(indent .. string.rep(" ", string.len(pos) + 6) .. "}")
+                    elseif (type(val) == "string") then
+                        print(indent .. "[" .. pos .. '] => "' .. val .. '"')
+                    else
+                        print(indent .. "[" .. pos .. "] => " .. tostring(val))
+                    end
+                end
+            else
+                print(indent .. tostring(t))
+            end
+        end
+    end
+    if (type(t) == "table") then
+        print(tostring(t) .. " {")
+        sub_print_r(t, "  ")
+        print("}")
+    else
+        sub_print_r(t, "  ")
+    end
+    print()
+end
+
+function tabley.extend(t1, t2)
+    for i = 1, #t2 do
+        t1[#t1 + 1] = t2[i]
+    end
+    return t1
 end
 
 function tabley.merge(t1, t2, overwrite)
@@ -197,20 +341,94 @@ function tabley.deserialize(str)
     return assert(loadstring(str))()
 end
 
-function table.populate_recursive(t, ...)
+function table.populate_recursive(tab, ...)
+    local t = tab
     local keys = { ... }
-    for _, key in ipairs(keys) do
+
+    if #keys < 1 then
+        return t
+	end
+
+    if #keys == 1 then
+		t[keys[1]] = t[keys[1]] or true
+		return t[keys[1]]
+	end
+
+    for i = 1, #keys - 2 do
+        local key = keys[i]
         t[key] = t[key] or {}
         t = t[key]
     end
-	return t
+	local key = keys[#keys - 1]
+	local lastkey = keys[#keys]
+	t[key] = t[key] or lastkey
+	return t[key]
 end
 
+function table.populate_recursive_from_table(tab, keys)
+    local t = tab
+
+    if #keys < 1 then
+        return t
+	end
+
+    if #keys == 1 then
+		t[keys[1]] = t[keys[1]] or true
+		return t[keys[1]]
+	end
+
+    for i = 1, #keys - 2 do
+        local key = keys[i]
+        t[key] = t[key] or {}
+        t = t[key]
+    end
+	local key = keys[#keys - 1]
+	local lastkey = keys[#keys]
+	t[key] = t[key] or lastkey
+	return t[key]
+end
+
+function table.overwrite_recursive(tab, ...)
+	local t = tab
+    local keys = { ... }
+
+    if #keys < 1 then
+        return
+	end
+
+    if #keys == 1 then
+        t[keys[1]] = true
+        return t[keys[1]]
+    end
+	
+    for i = 1, #keys - 2 do
+        local key = keys[i]
+        t[key] = {}
+        t = t[key]
+    end
+	
+	local key = keys[#keys - 1]
+	local lastkey = keys[#keys]
+    t[key] = lastkey
+	return t[key]
+end
 
 function tabley.fast_remove_at(t, index)
 	local length = #t
 	t[index] = t[length]
 	t[length] = nil
+end
+
+function tabley.erase(t, item)
+    local n = #t
+	
+    for i = 1, n do
+        if item == t[i] then
+            t[i] = t[n]
+			t[n] = nil
+			return
+		end
+	end
 end
 
 function tabley.fast_remove(t, fnKeep)

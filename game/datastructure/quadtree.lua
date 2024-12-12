@@ -1,4 +1,4 @@
-local QuadTree = Object:extend()
+local QuadTree = Object:extend("QuadTree")
 
 
 

@@ -1,5 +1,5 @@
 -- array based version
-Bst2 = Object:extend()
+Bst2 = Object:extend("Bst2")
 
 local function left(index)
 	return 2 * index
@@ -34,8 +34,6 @@ function Bst2:insert(value, index)
 end
 
 function Bst2:ipairs()
-	-- Remember that a closure is a function that accesses one or 
-	-- more local variables from its enclosing function.
 
 	local stack = {}
 	local c = 0

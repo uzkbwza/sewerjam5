@@ -1,5 +1,5 @@
 ---@diagnostic disable: lowercase-global
-Vec2 = Object:extend()
+Vec2 = Object:extend("Vec2")
 
 function Vec2:new(x, y)
 	self.x = x or 0
@@ -59,7 +59,7 @@ function Vec2.__le(a, b)
 end
 
 function Vec2.__tostring(a)
-	return "(" .. a.x .. ", " .. a.y .. ")"
+	return string.format("(%0.4f, %0.4f)", a.x, a.y)
 end
 
 function Vec2:magnitude()
@@ -72,6 +72,10 @@ function Vec2:normalized()
 		return Vec2(0, 0)
 	end
 	return Vec2(self.x / mag, self.y / mag)
+end
+
+function Vec2:is_zero()
+	return self.x == 0 and self.y == 0
 end
 
 function Vec2:distance_to(b)
@@ -139,7 +143,7 @@ end
 
 -- vec3
 
-Vec3 = Object:extend()
+Vec3 = Object:extend("Vec3")
 
 function Vec3:new(x, y, z)
 	self.x = x or 0
@@ -267,6 +271,7 @@ function Vec3:clone()
 end
 
 -- Vec2 In-place Methods
+
 
 function Vec2:add_in_place(x, y)
     if type(x) == "number" then
@@ -581,6 +586,10 @@ end
 
 function vec2_angle(x, y)
     return math.atan2(y, x)
+end
+
+function vec2_angle_to(x1, y1, x2, y2)
+	return math.atan2(y2 - y1, x2 - x1)
 end
 
 function vec2_angle_table(a)

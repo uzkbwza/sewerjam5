@@ -1,6 +1,6 @@
 local Tile = require "tile.tile"
 
-local Tileset = Object:extend()
+local Tileset = Object:extend("Tileset")
 
 function Tileset:new(texture, tile_width, tile_height, tile_data)
     self.texture = texture
@@ -23,17 +23,24 @@ function Tileset:new(texture, tile_width, tile_height, tile_data)
 			self.tiles[id] = tile
         end
     end
-
-
+	
 	if tile_data and tile_data.data then
 		local data_table = {}
+        local add_data_to_tile = function(data_id, key, value)
+			
+			data_table[data_id] = data_table[data_id] or {}
+            data_table[data_id][key] = value
+			
+		end
         for key, list in pairs(tile_data.data) do
             for value, ids in pairs(list) do
-                for _, id in ipairs(ids) do
-                    data_table[id] = data_table[id] or {
-                    }
-                    data_table[id][key] = value
-                end
+                if type(ids) == "number" then
+                    add_data_to_tile(ids, key, true)
+				else
+					for _, id in ipairs(ids) do
+						add_data_to_tile(id, key, value)
+					end
+				end
             end
         end
         for id, data in pairs(data_table) do
@@ -57,7 +64,8 @@ end
 function Tileset:set_tile_data(data, x, y)
 	local id = y and self:xy_to_id(x, y) or x
 	local tile = self.tiles[id]
-    assert(self.tiles[id] ~= nil, "tile doesn't exist")
+    -- assert(self.tiles[id] ~= nil, "tile doesn't exist")
+	if tile == nil then return end
 	tile.data = data
 end
 

@@ -1,6 +1,7 @@
-local Tile = Object:extend()
+local Tile = Object:extend("Tile")
 
-function Tile:new( tileset, id, quad, texture, data )
+function Tile:new(tileset, id, quad, texture, data)
+	self.__isquad = true
     self.quad = quad
 	self.texture = texture
     self.data = data

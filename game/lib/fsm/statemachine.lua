@@ -21,7 +21,8 @@ function StateMachine._create(obj)
 		states = {},
 		update = function() end
 	}
-	
+
+	obj.state_transition = function(state, to, ...) obj:change_state(to, ...) end
 	setmetatable(obj, mt)
 
 	return obj
@@ -33,7 +34,7 @@ function StateMachine:add_state(state)
 	if self.current_state == nil then
 		self:change_state(state.name)
 	end
-	signal.transition = function(to, ...) self:change_state(to, ...) end
+	state.transition = self.state_transition
 end
 
 function StateMachine:add_states(states)

@@ -1,10 +1,15 @@
-local Camera = GameObject:extend()
+local Camera = GameObject:extend("Camera")
 
 function Camera:new(x, y)
 	Camera.super.new(self, x, y)
 	self:add_sequencer()
 	self:add_elapsed_time()
-	self:add_elapsed_ticks()
+    self:add_elapsed_ticks()
+    self:implement(Mixins.Fx.Rumble)
+	local rumble_func = self.start_rumble
+	self.start_rumble = function(self, intensity, duration, easing)
+		rumble_func(self, intensity * usersettings.screen_shake_amount, duration, easing)
+	end
 	self.following = nil
 	self.viewport_size = Vec2()
 	self.zoom = 1
@@ -21,10 +26,6 @@ function Camera:follow(obj)
 		self.following = nil
 	end)
 
-	signal.connect(obj, "removed", self, "on_object_removed", function()
-		self.following = nil
-	end)
-
 end
 
 function Camera:set_limits(xstart, ystart, xend, yend)
@@ -38,6 +39,9 @@ end
 
 
 function Camera:update(dt)
+    if self.following then
+        self.pos.x, self.pos.y, self.z_pos = self.following.pos.x, self.following.pos.y, self.following.z_pos
+    end
 end
 
 

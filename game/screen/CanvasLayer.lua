@@ -65,6 +65,7 @@ end
 ---@param length number
 ---@return number|nil
 local function normalize_index(index, length)
+	if index == nil then return nil end
     if index == 0 then return nil end
     if index < 0 then
         index = length + 1 + index
@@ -75,12 +76,11 @@ local function normalize_index(index, length)
     return index
 end
 
----Load a layer by name from `CanvasLayer.game_screens`.
 ---@param l
 ---@return CanvasLayer
 function CanvasLayer:load_layer(l)
 	if type(l) == "string" then
-		local layer = Screens[l]()
+		local layer = table.get_by_path(Screens, l)()
 		layer.name = l
 		return layer
 	else
@@ -172,9 +172,19 @@ function CanvasLayer:insert_layer(l, index)
     table.insert(self.children, index, layer)
     self:refresh_layer_links()
     self:init_layer(layer)
-	self:bind_destruction(layer)
+    self:bind_destruction(layer)
+	signal.connect(layer, "destroyed", self, "remove_child_on_destroy", function() self:remove_child(layer) end)
 	collectgarbage("collect")
 	return layer
+end
+
+---@param layer CanvasLayer|string
+function CanvasLayer:remove_child(layer)
+	self:remove_layer(self:get_index_of_layer(layer))
+end
+
+function CanvasLayer:get_input_table()
+	return self.input
 end
 
 ---@param index number
@@ -441,7 +451,7 @@ function CanvasLayer:draw_shared()
 	self:draw()
 
     local update_interp = true
-    for i = #self.children, 1, -1 do
+    for i = 1, #self.children do
         local layer = self.children[i]
         layer:draw_shared()
         layer.interp_fraction = update_interp and self.interp_fraction or layer.interp_fraction

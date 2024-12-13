@@ -31,12 +31,16 @@ function Enemy:new(x, y)
 
 	self:set_flip(1)
 
+	self.y_flip = 1
 	self.hazard = true
 	self.is_enemy = true
 
     self.z_index = 0
+	self.hit_flash = false
     
-	self.score = 150
+    self.score = 150
+	
+	self.spawn_fx = "enemy_spawn"
 	
 	self:init_health(1)
 end
@@ -47,22 +51,33 @@ function Enemy:init_health(health)
 end
 
 function Enemy:on_hit(by)
+	if self.invulnerable then return end
 	self.health = self.health - by.damage
 	if self.health <= 0 then
 		self:die()
+	else
+        self:start_timer("hit_flash", 10)
 	end
+	self.world:play_sfx("enemy_hit_by_bullet")
 end
 
 function Enemy:die()
-	self:queue_destroy()
+    self:queue_destroy()
+	self.world:play_sfx(self.death_fx or "enemy_die")
 	local tex =  self:get_texture()
     self:spawn_object(DeathFx(self.pos.x, self.pos.y, tex, self.flip))
-	self:spawn_object(ObjectScore(self.pos.x, self.pos.y, self.score))
+    self:spawn_object(ObjectScore(self.pos.x, self.pos.y, self.score))
+end
+
+function Enemy:enter_shared()
+	Enemy.super.enter_shared(self)
+	self.world:play_sfx(self.spawn_fx)
 end
 
 function Enemy:enter()
-	self:add_tag("enemy")
+    self:add_tag("enemy")
 end
+
 
 function Enemy:get_texture()
 	return textures.enemy_placeholder1
@@ -73,7 +88,10 @@ function Enemy:get_player()
 end
 
 function Enemy:draw()
-	graphics.draw_centered(self:get_texture(), 0, 0, 0, self.flip, 1, 0, 1)
+	if self:timer_running("hit_flash") and self.tick % 2 == 0 then
+        return	
+	end
+	graphics.draw_centered(self:get_texture(), 0, 0, 0, self.flip, self.y_flip, 0, 1)
 end
 
 return Enemy

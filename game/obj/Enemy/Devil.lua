@@ -11,6 +11,7 @@ function Devil:new(x, y)
     self.wiggle_frequency = 20
 	self.targeted_player = false
 	self.score = 200
+	self.spawn_fx = "enemy_demon_spawn"
 end
 
 function Devil:enter()
@@ -33,7 +34,8 @@ function Devil:update(dt)
             local pcx, pcy = self:get_cell(px, py)
             if pcx == cx then
                 self.targeted_player = sign(pcy - cy)
-				self:start_timer("startup", 10)
+                self:start_timer("startup", 10)
+				self.world:play_sfx("enemy_demon_attack")
             end
         end
     else

@@ -95,8 +95,8 @@ function Sequencer:init_coroutine(co)
     table.insert(self.running, co)
 	self.running_indices[co] = #self.running
 end
-
 function Sequencer:update(dt)
+
 	if table.is_empty(self.running) then
 		return
 	end
@@ -105,9 +105,17 @@ function Sequencer:update(dt)
 
 	for _, value in ipairs(self.running) do
 		self.current_chain = value
-		if self.suspended[value] == nil then
-			coroutine.resume(value)
+        if self.suspended[value] == nil then
+			if coroutine.status(value) == "dead" then
+				goto continue
+			end
+			local status, val = coroutine.resume(value)
+			if not status then
+				error(val)
+			end
+
 		end
+	    ::continue::
 	end
 
     for i = #self.running, 1, -1 do
@@ -127,7 +135,6 @@ function Sequencer:update(dt)
 end
 
 function Sequencer:wait(duration)
-	local start = self.elapsed
 	local finish = self.elapsed + duration
 	while self.elapsed < finish do
 		coroutine.yield()
@@ -210,7 +217,7 @@ function Sequencer:call(func)
 		if not status then
 			error(val)
 		end
-		if val then 
+		if val then
 			self:call(val)
 		end
 		coroutine.yield()

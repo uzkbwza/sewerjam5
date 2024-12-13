@@ -56,12 +56,16 @@ local OBJECT_TILES = {
     player = "player_placeholder",
     -- cart = "friendly_placeholder1",
     skullbird = "enemy_skullbird1",
-	skull_up = "enemy_skullbird1",
+    skull_up = "su",
+	skull_down = "sd",
     flyer1 = "f1",
 	flyer2 = "f2",
     flyer3 = "f3",
     devil = "d",
-	kebab = "object_kebab1",
+    kebab = "object_kebab1",
+	screen_clear = "sc",
+	bear = "br",
+	tower = "enemy_tower_projectile_icon1",
 	-- pit = "terrain_pit",
 }
 

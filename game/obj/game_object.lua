@@ -450,7 +450,9 @@ end
 function GameObject:add_sfx(sfx_name, volume, pitch, loop, relative)
     self.sfx = self.sfx or {}
     local src = audio.get_sfx(sfx_name)
-	src:setRelative(relative or false)
+	if relative then
+		src:setRelative(true)
+	end
 	self.sfx[sfx_name] = {
 		src = src,
 		volume = volume,
@@ -462,13 +464,13 @@ end
 
 function GameObject:play_sfx(sfx_name, volume, pitch, loop, x, y, z)
     local t = self.sfx[sfx_name]
-    local relative = t.src:isRelative()
+    -- local relative = t.src:isRelative()
     t.src:stop()
-    x = x or (relative and (0) or self.pos.x)
-    y = y or (relative and (0) or self.pos.y)
-    z = z or (relative and (audio.default_z_pos) or self.z_pos + audio.default_z_pos)
+    -- x = x or (relative and (0) or self.pos.x)
+    -- y = y or (relative and (0) or self.pos.y)
+    -- z = z or (relative and (audio.default_z_pos) or self.z_pos + audio.default_z_pos)
     -- audio.set_src_position(t.src, x, y, z)
-    t.src:setPosition(x, y, z)
+    -- t.src:setPosition(x, y, z)
     audio.play_sfx(t.src, volume or t.volume, pitch or t.pitch, loop or t.loop)
 end
 
@@ -479,7 +481,6 @@ end
 function GameObject:stop_sfx(sfx_name)
 	self.sfx[sfx_name].src:stop()
 end
-
 
 local destroyed_index_func = function(t, k)
 	if t == "is_destroyed" then

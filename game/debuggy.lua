@@ -9,6 +9,7 @@ function debuggy.can_draw()
 end
 
 function debuggy.printlines(line, x, y)
+	graphics.set_font(graphics.font["PixelOperator-Bold"])
 	if not debuggy.can_draw() then
 		return
 	end

@@ -34,6 +34,10 @@ function SpriteSheet:new(texture, sprite_width, sprite_height)
     end
 end
 
+function SpriteSheet:get_frame(id)
+    return self:get_quad(id)
+end
+
 function SpriteSheet:get_quad(id)
     local id = clamp(id, 1, #self)
     return self[id]

@@ -1,7 +1,9 @@
 local DeliveryGuyBullet = GameObject:extend("DeliveryGuyBullet")
 local BulletHitEffect = Effect:extend("BulletHitEffect")
+local DeathEffect = require"fx.death_effect"
 
 local SPEED = 10
+local BulletHitSpriteSheet = SpriteSheet(textures.fx_bullethit, 16, 16)
 
 local sensor_config = {
 	collision_rect = Rect.centered(0, 0, 15, 15),
@@ -25,10 +27,18 @@ function DeliveryGuyBullet:new(x, y, direction_x, direction_y)
 	self.damage = 1
     self:add_bump_sensor(sensor_config)
     self:enable_bump_mask(PHYSICS_TERRAIN, PHYSICS_ENEMY)
+	
 end
 
 function DeliveryGuyBullet:enter()
 	self.last_positions = { self.pos.x, self.pos.y }
+	self:spawn_object(BulletHitEffect(self.pos.x, self.pos.y)).duration = 5
+	self:spawn_object(BulletHitEffect(self.pos.x, self.pos.y))
+	local death_effect = self:spawn_object(DeathEffect(self.pos.x, self.pos.y, BulletHitSpriteSheet:get_frame(1)))
+	death_effect.flash = false
+	death_effect.color_flash = {0, 2}
+    death_effect.size_mod = 0.2
+	death_effect.duration = death_effect.duration * 0.25
 end
 
 function DeliveryGuyBullet:bump_filter(other)
@@ -74,12 +84,16 @@ end
 
 function DeliveryGuyBullet:hit_something()
     self:queue_destroy()
-    self.hit = true
-	self:spawn_object(BulletHitEffect(self.pos.x, self.pos.y))
+    -- self.hit = true
+    self:spawn_object(BulletHitEffect(self.pos.x, self.pos.y))
+	local death_effect = self:spawn_object(DeathEffect(self.pos.x, self.pos.y, BulletHitSpriteSheet:get_frame(1)))
+	death_effect.flash = false
+	death_effect.color_flash = {0, 2}
+    death_effect.size_mod = 0.25
+	death_effect.duration = death_effect.duration * 0.4
 end
 
 function DeliveryGuyBullet:draw()
-    graphics.set_color(graphics.color_flash(0, 2))
 	local local_points = {}
     for i = 1, #self.last_positions, 2 do
         local_points[i] = self.last_positions[i] - self.pos.x
@@ -87,7 +101,13 @@ function DeliveryGuyBullet:draw()
     end
 	local_points[#local_points + 1] = 0
 	local_points[#local_points + 1] = 0
-	if self.last_positions and #self.last_positions > 2 then
+    if self.last_positions and #self.last_positions > 2 then
+        graphics.push()
+        graphics.translate(0, 1)
+        graphics.set_color(palette.black)
+        graphics.line(local_points)
+		graphics.pop()
+		graphics.set_color(graphics.color_flash(0, 2))
 		graphics.line(local_points)
 	end
 	-- graphics.draw_centered(textures.player_bullet, 0, 0, 0, 1, 1, 0, 1)
@@ -95,7 +115,6 @@ end
 
 
 local DURATION = 2
-local BulletHitSpriteSheet = SpriteSheet(textures.fx_bullethit, 16, 16)
 
 
 function BulletHitEffect:new(x, y)
@@ -109,8 +128,8 @@ end
 
 function BulletHitEffect:draw(elapsed, ticks, t)
 	-- graphics.set_color(graphics.color_flash(0, 2))
-
-	graphics.set_color(palette.white)
+	graphics.set_color(graphics.color_flash(0, 2))
+	-- graphics.set_color(palette.white)
 	graphics.draw_centered(BulletHitSpriteSheet:interpolate(t), 0, 0, 0, 1, 1, 0, 1)
 end
 

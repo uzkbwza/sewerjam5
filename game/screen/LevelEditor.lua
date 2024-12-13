@@ -20,7 +20,7 @@ local PALETTE_HIDE_TIMER = 20
 
 local SAVE_READABLE = false
 
-local EDITING_MAP = "map1_up"
+local EDITING_MAP = "map1"
 
 local no_tile_draw_paint_modes = {
 	select = true,
@@ -84,7 +84,7 @@ function LevelEditor:new(x, y, width, height)
 
     self.state = "draw"
 	
-	self.map_name = nil
+	self.map_name = EDITING_MAP
 
 	self.showing_palette = false
 	self.palette_mouse_over_tile = nil
@@ -142,6 +142,10 @@ function LevelEditor:new(x, y, width, height)
 
 		signal.connect(input, "mouse_wheel_moved", self, "on_mouse_wheel_moved", (
 		function(x, y)
+			if self.input == input.dummy then
+				return
+			end
+
 			local active_area = self:get_active_section()
 
 
@@ -187,6 +191,7 @@ function LevelEditor:load(map_name)
     local map_string = filesystem.load_file_native("map/maps/" .. map_name .. "/tiles.lua")
 	
     if not map_string then
+		self:notify("Failed to load map " .. map_name)
         return
 	end
 
@@ -200,6 +205,7 @@ function LevelEditor:load(map_name)
 	self.map_name = map_name
 
 	self:build_from_level_data(map_data)
+	self:notify("Loaded map " .. map_name)
 end
 
 function LevelEditor:camera_zoom(amount)
@@ -443,8 +449,24 @@ function LevelEditor:clear_tiles()
     self:end_action()
 end
 
+function LevelEditor:process_load_save_screen_text(text) 
+	if self.loading then
+		self.loading = false
+		self:load(text)
+	elseif self.saving then
+		self.saving = false
+		self:save(text)
+		self:notify("Saved map " .. text)
+	end
+end
+
 function LevelEditor:on_key_pressed_drawing_area(key)
 	if input.keyboard_held["lctrl"] or input.keyboard_held["rctrl"] then
+		if key == "l" then
+			self.loading = true
+			self.load_save_text = "load map"
+			self:push_to_parent("Editor.LoadSaveScreen")
+		end
         if key == "s" then
             -- local string = self:get_level_string()
             -- if string == "invalidcharacters" then
@@ -2293,7 +2315,6 @@ function LevelEditor:draw_tiles()
 	graphics.rectangle("fill", bounds_min_x * TILE_SIZE, bounds_min_y * TILE_SIZE,
 		(bounds_max_x - bounds_min_x + 1) * TILE_SIZE, (bounds_max_y - bounds_min_y + 1) * TILE_SIZE)
 
-
 	local show_all_layers = (self.layer_display_type == LAYER_DISPLAY_CURRENT_HIGHLIGHTED or self.layer_display_type == LAYER_DISPLAY_ALL)
 	local min_z = show_all_layers and bounds_min_z or self.layer
 	local max_z = show_all_layers and bounds_max_z or self.layer
@@ -2332,7 +2353,7 @@ function LevelEditor:draw_tiles()
 
                     self:tile_draw(tile, x * TILE_SIZE, y * TILE_SIZE)
                 end
-				if self:tile_is_object(tile) and tilesets.object_tiles[tile] and textures[tilesets.object_tiles[tile]] then
+				if self:tile_is_object(tile) and tilesets.object_tiles[tile] and textures[tilesets.object_tiles[tile]] and x == self.mcell.x and y == self.mcell.y then
 					object_print_at[#object_print_at + 1] = {
 						tile = tile,
 						x = x,

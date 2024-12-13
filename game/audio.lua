@@ -36,7 +36,7 @@ function audio.load()
 end
 
 function audio.set_position(x, y, z)
-	love.audio.setPosition(x, y, z or audio.default_z_pos)
+	-- love.audio.setPosition(x, y, z or audio.default_z_pos)
 end
 
 function audio.play_sfx(src, volume, pitch, loop)
@@ -52,7 +52,14 @@ function audio.get_sfx(name)
 end
 
 function audio.play_music(src)
-	error("TODO")
+	audio.stop_music(src)
+    src:setVolume(audio.music_volume)
+    src:setLooping(true)
+    src:play()
+end
+
+function audio.stop_music(src)
+    src:stop()
 end
 
 return audio

@@ -17,7 +17,8 @@ end
 
 function SkullBird:enter()
 	local x, y = self:get_cell()
-    self.target_cell = Vec2(x, y - self.world.scroll_direction * (self.reversed and -1 or 1))
+    self.target_cell = Vec2(x, y - self.world.scroll_direction * (self.reversed and -1 or 1) * 120)
+	self.last_move_direction = Vec2(0, -self.world.scroll_direction)
 	self:move_around()
 end
 
@@ -27,10 +28,12 @@ end
 
 function SkullBird:is_skullbird_at_cell(x, y)
 	local enemies = self:get_enemies_at_cell(x, y)
-	for _, enemy in ipairs(enemies) do
+    for _, enemy in ipairs(enemies) do
+		if enemy == self then goto continue end
 		if enemy.is and enemy:is(SkullBird) then
 			return true
 		end
+		::continue::
 	end
 	return false
 end
@@ -49,8 +52,9 @@ function SkullBird:draw()
     graphics.set_color(palette.red)
 	if debug.can_draw() then
 		local cx, cy = self:get_cell()
-		local wx, wy = self:to_local(self.world.map.cell_to_world(cx, cy, 0))
-		graphics.line(wx, wy, self:to_local(self.world.map.cell_to_world(self.target_cell.x, self.target_cell.y, 0)))
+        local wx, wy = self:to_local(self.world.map.cell_to_world(cx, cy, 0))
+		local wx2, wy2 = self:to_local(self.world.map.cell_to_world(self.target_cell.x, self.target_cell.y, 0))
+		graphics.line(wx, wy, wx2 * 1, wy2 * 1)
 	end
 end
 
@@ -64,11 +68,13 @@ function SkullBird:update_next_cell(current_cell_x, current_cell_y)
 end
 
 function SkullBird:move_around()
-	if not self.moving then
+    if not self.moving then
+		self.world:play_sfx("enemy_bonerattle")
+
 		-- self.target_cell = Vec2(self.target_cell.x, self.target_cell.y + self.world.scroll_direction)
         local player = self:get_closest_object_with_tag("player")
-		local current_cell_x, current_cell_y = self:get_cell()
-		local diff = self.target_cell - Vec2(current_cell_x, current_cell_y)
+        local current_cell_x, current_cell_y = self:get_cell()
+
         local next_cell_x, next_cell_y = self:update_next_cell(current_cell_x, current_cell_y)
 
         if player and not self:timer_running("player_check") then
@@ -125,12 +131,14 @@ function SkullBird:move_around()
 		else
 			self:move_toward_cell(self.target_cell.x, self.target_cell.y, self.speed, immediate)
         end
-		self.last_move_direction = self.target_cell - Vec2(current_cell_x, current_cell_y)
+        self.last_move_direction = self.target_cell - Vec2(current_cell_x, current_cell_y)
 	end
 end
 
 function SkullBird:update()
-	self:move_around()
+    self:move_around()
+    if self.tick % 30 == 0 then
+	end
 end
 
 return SkullBird

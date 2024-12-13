@@ -55,27 +55,27 @@ function World:create_camera()
 	return self.camera
 end
 
-function World:play_sfx(name, x, y, volume, pitch, loop, polyphony)
+-- function World:play_sfx(name, x, y, volume, pitch, loop, polyphony)
 
-	local src = audio.get_sfx(name)
+-- 	local src = audio.get_sfx(name)
 
-    self.sfx_polyphony[name] = (polyphony or self.sfx_polyphony[name]) or math.huge
-    self.sfx_sources_playing[name] = (self.sfx_sources_playing[name] or bonglewunch())
-	local sources_playing = self.sfx_sources_playing[name]
-    if #sources_playing >= self.sfx_polyphony[name] then
-		local old = sources_playing[1]
-        self.world_sfx:remove(old)
-		table.remove(sources_playing, 1)
-        old:stop()
-		old:release()
-	else
-		table.insert(sources_playing, src)
-	end
+--     self.sfx_polyphony[name] = (polyphony or self.sfx_polyphony[name]) or math.huge
+--     self.sfx_sources_playing[name] = (self.sfx_sources_playing[name] or bonglewunch())
+-- 	local sources_playing = self.sfx_sources_playing[name]
+--     if #sources_playing >= self.sfx_polyphony[name] then
+-- 		local old = sources_playing[1]
+--         self.world_sfx:remove(old)
+-- 		table.remove(sources_playing, 1)
+--         old:stop()
+-- 		old:release()
+-- 	else
+-- 		table.insert(sources_playing, src)
+-- 	end
 
-	src:setPosition(x, y)
-    audio.play_sfx(src, volume, pitch, loop)
-    self.world_sfx:push({name=name, src=src})
-end
+-- 	src:setPosition(x, y)
+--     audio.play_sfx(src, volume, pitch, loop)
+--     self.world_sfx:push({name=name, src=src})
+-- end
 
 function World.z_sort(a, b)
 	return (a.z_index or 0) < (b.z_index or 0)

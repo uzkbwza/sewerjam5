@@ -5,10 +5,14 @@ local DeathFx = Effect:extend("DeathFx")
 
 function DeathFx:new(x, y, texture, flip)
 	DeathFx.super.new(self, x, y)
-	self.duration = 30
-	self.flip = flip
+    self.duration = 30
+	self.reversed = false
+	self.flip = flip or 1
 	local width, height = 0, 0
-	local offset_x, offset_y = 0, 0
+    local offset_x, offset_y = 0, 0
+    self.flash = true
+	self.color_flash = nil
+	self.size_mod = 1
 	if texture.__isquad then
 		width, height = texture.width, texture.height
 		offset_x, offset_y = texture.x, texture.y
@@ -76,9 +80,14 @@ function DeathFx:new(x, y, texture, flip)
 end
 
 function DeathFx:draw(elapsed, tick, t)
+	if self.reversed then
+        t = 1 - t
+		elapsed = self.duration - elapsed
+		tick = floor(elapsed)
+	end
 
 	t = elapsed / (self.duration)
-	t = clamp(t - (1/self.duration) * 5, 0, 1)
+	t = clamp(t - (1/self.duration) * 6, 0, 1)
 	t = ease("linear")(t) 
     -- t = lerp(t, stepify(t, 0.1), 0.5)
 	if tick >= self.duration - 12 and (floor(tick/1)) % 2 == 0 then
@@ -87,16 +96,28 @@ function DeathFx:draw(elapsed, tick, t)
 	
 	graphics.push("all")
 	for _, pixel in ipairs(self.pixels) do
-		graphics.set_color(pixel.r, pixel.g, pixel.b, pixel.a)
+		if self.color_flash then
+			graphics.set_color(graphics.color_flash(self.color_flash[1], self.color_flash[2]))
+		elseif self.color then
+			graphics.set_color(self.color)
+		else
+			graphics.set_color(pixel.r, pixel.g, pixel.b, pixel.a)
+		end
 		graphics.points(
-			floor(pixel.x + pixel.dist * (t) * DEATH_FX_DISTANCE * self.width  * pixel.direction_from_center_x * self.flip) + 1,
-			floor(pixel.y + pixel.dist * (t) * DEATH_FX_DISTANCE * self.height * pixel.direction_from_center_y) + 1
+			floor(pixel.x + pixel.dist * (t) * DEATH_FX_DISTANCE * self.width  * pixel.direction_from_center_x * self.flip) * self.size_mod + 1,
+			floor(pixel.y + pixel.dist * (t) * DEATH_FX_DISTANCE * self.height * pixel.direction_from_center_y) * self.size_mod + 1
 		)
 	end
     graphics.pop()
-	if tick == 1 or tick == 4 then
-        graphics.set_color(1, 1, 1, 1)
-        graphics.circle("fill", 0, 0, 5 - floor(tick) + 12)
+    if (tick == 1 or tick == 4)and self.flash then
+		if self.color_flash then
+			graphics.set_color(graphics.color_flash(self.color_flash[1], self.color_flash[2]))
+		elseif self.color then
+			graphics.set_color(self.color)
+		else
+		graphics.set_color(1, 1, 1, 1)
+		end
+        graphics.circle("fill", 0, 0, 5 - floor(tick) + 12 * self.size_mod)
     end
 end
 

@@ -114,10 +114,8 @@ function input.check_input_combo(mapping_table, joystick, input_table)
 
     for _, keycombo in ipairs(mapping_table) do
         if type(keycombo) == "string" then
-			
             if joystick == nil then
-				
-				local key = love.keyboard.getKeyFromScancode(love.keyboard.getScancodeFromKey(keycombo))
+                local key = love.keyboard.getKeyFromScancode(love.keyboard.getScancodeFromKey(keycombo))
                 if input_table.keyboard_held[key] or input_table.keyboard_pressed[key] then
                     pressed = true
                 end
@@ -129,9 +127,8 @@ function input.check_input_combo(mapping_table, joystick, input_table)
         else
             pressed = true
             for _, key in ipairs(keycombo) do
-
                 if joystick == nil then
-					key = love.keyboard.getKeyFromScancode(love.keyboard.getScancodeFromKey(key))
+                    key = love.keyboard.getKeyFromScancode(love.keyboard.getScancodeFromKey(key))
 
                     if not input_table.keyboard_held[key] and not input_table.keyboard_pressed[key] then
                         pressed = false
@@ -153,7 +150,11 @@ function input.check_input_combo(mapping_table, joystick, input_table)
     return pressed
 end
 
-function input.process(t)
+function input.post_update()
+	input.post_process(input)
+end
+
+function input.post_process(t)
 	local mposx, mposy = love.mouse.getPosition()
 	t.on_mouse_moved(mposx, mposy)
 
@@ -203,6 +204,13 @@ function input.process(t)
         t[g[action].released] = false
 		t[g[action].held] = false
     end
+end
+
+function input.process(t)
+
+
+    local g = input.generated_action_names
+
 
     for action, mapping in pairs(t.mapping) do
         local pressed = false

@@ -136,7 +136,7 @@ function graphics.game_draw()
 
     local update_interp = true
 	
-	local layer = graphics.layer_tree
+	local layer = game.layer_tree
 
     layer.interp_fraction = update_interp and graphics.interp_fraction or layer.interp_fraction
 	layer:draw_shared()
@@ -173,19 +173,24 @@ function graphics.screen_pos_to_canvas_pos(sposx, sposy)
 end
 
 local flash_table = {
-    Color.from_hex("44891a"),
-    Color.from_hex("be2633"),
-    Color.from_hex("f7e26b"),
-    Color.from_hex("31a2f2"),
-    Color.from_hex("e06f8b"),
-    Color.from_hex("eb8931"),
-    Color.from_hex("b2dcef"),
-    Color.from_hex("a3ce27"),
-    Color.from_hex("ffffff"),	
+    Color.from_hex("ffff00"),
+    Color.from_hex("ff8000"),
+    Color.from_hex("ffff00"),
+    Color.from_hex("80ff00"),
+    Color.from_hex("00ff00"),
+    Color.from_hex("00ff80"),
+    Color.from_hex("00ffff"),
+    Color.from_hex("0080ff"),
+    Color.from_hex("0000ff"),
+    Color.from_hex("8000ff"),
+    Color.from_hex("ff00ff"),
+    Color.from_hex("ff0080"),
+    -- Color.from_hex("ffffff"),
+
 }
 
 function graphics.color_flash(offset, tick_length)
-    local color = flash_table[floor((gametime.ticks / tick_length) % #flash_table) + 1]
+    local color = flash_table[floor(((gametime.ticks / tick_length) + offset) % #flash_table) + 1]
 	return color
 end
 
@@ -594,6 +599,7 @@ function graphics.print_outline(outline_color, text, x, y, r, sx, sy, ox, oy, kx
     love.graphics.print(text, x - 1, y - 1, r, sx, sy, ox, oy, kx, ky)
     love.graphics.print(text, x + 1, y - 1, r, sx, sy, ox, oy, kx, ky)
     love.graphics.print(text, x - 1, y + 1, r, sx, sy, ox, oy, kx, ky)
+	love.graphics.print(text, x + 1, y + 1, r, sx, sy, ox, oy, kx, ky)
     love.graphics.print(text, x + 1, y, r, sx, sy, ox, oy, kx, ky)
     love.graphics.print(text, x - 1, y, r, sx, sy, ox, oy, kx, ky)
     love.graphics.print(text, x, y + 1, r, sx, sy, ox, oy, kx, ky)

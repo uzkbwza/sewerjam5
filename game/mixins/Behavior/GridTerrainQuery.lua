@@ -13,6 +13,10 @@ function GridTerrainQuery:get_tile_relative(x, y, z)
     return self.world.map:get_tile(cx + x, cy + y, cz + z)
 end
 
+function GridTerrainQuery:get_tile(x, y, z)
+    return self.world.map:get_tile(x, y, z)
+end
+
 function GridTerrainQuery:get_bump_tile_relative(x, y, z)
 	local cx, cy, cz = self:get_cell()
     return self.world.map:get_bump_tile(cx + x, cy + y, cz + z)

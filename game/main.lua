@@ -205,16 +205,18 @@ function love.update(dt)
 	end
 	
 	input.update(dt)
-
-    -- global input shortcuts
+	game:update(dt)
+	
+	-- global input shortcuts
 	if input.fullscreen_toggle_pressed then
 		love.window.setFullscreen(not love.window.getFullscreen())
 	end
-
-	game:update(dt)
+		
+    debug.update(dt)
+	
+	input.post_update()
     
 	
-    debug.update(dt)
 	if debug.enabled then
         -- dbg("move", input.move)
         -- dbg("move_left", input.move_left)
@@ -234,7 +236,6 @@ function love.draw()
 	-- graphics.interp_fraction = conf.interpolate_timestep and clamp(accumulated_time / frame_time, 0, 1) or 1
 	-- graphics.interp_fraction = stepify(graphics.interp_fraction, 0.1)
 
-    graphics.layer_tree = game.layer_tree
     graphics.draw_loop()
 	
 	if debug.can_draw() then

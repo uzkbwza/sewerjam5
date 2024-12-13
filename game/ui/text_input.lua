@@ -17,6 +17,7 @@ function TextInputBox:new(x, y, w, h)
     self.text = ""
     self.cursor = 1
     self.active = false
+	self.single_line = false
 
     signal.connect(input, "text_input", self, "on_text_input")
     signal.connect(input, "key_pressed", self, "on_key_pressed")
@@ -72,7 +73,7 @@ function TextInputBox:on_key_pressed(key)
 			self:move_cursor(-1)
 		end
 
-    elseif key == "return" then
+    elseif key == "return" and not self.single_line then
         self:add_at_cursor("\n")
     end
 

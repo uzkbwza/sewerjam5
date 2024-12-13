@@ -138,6 +138,10 @@ function tabley.is_empty(t)
 	return next(t) == nil
 end
 
+function tabley.get_by_path(t, str)
+	return tabley.get_recursive(t, unpack(string.split(str, ".")))
+end
+
 function tabley.sorted(t, sort)
 	local sorted = {}
 	for _, v in ipairs(t) do
@@ -217,11 +221,19 @@ end
 
 function tabley.get_recursive(t, ...)
 	local keys = { ... }
-	local value = t
-	for i = 1, #keys do
-		value = value[keys[i]]
-		if value == nil then
-			return nil
+	local t_ = t
+	local len = #keys
+	local value = nil
+	for i=1, len do
+		local key = keys[i]
+		value = t_[key]
+		if value == nil then return nil	end
+		if i < len then 
+			if type(value) == "table" then
+				t_ = value
+			else
+				error("Invalid table index: " .. str)
+			end 
 		end
 	end
 	return value

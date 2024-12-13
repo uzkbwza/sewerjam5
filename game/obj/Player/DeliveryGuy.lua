@@ -58,6 +58,9 @@ function DeliveryGuy:new(x, y, invuln)
     self:enable_bump_layer(PHYSICS_PLAYER)
     self:enable_bump_mask(PHYSICS_ENEMY, PHYSICS_TERRAIN)
 
+    self:add_sfx("player_shoot", 0.85, 1, false, 1)
+	self:add_sfx("player_jump", 1)
+
 	self.speed = 1.5
 	self.input_move_dir = Vec2(0, 0)
 	
@@ -71,6 +74,43 @@ function DeliveryGuy:new(x, y, invuln)
 
 	self.facing_direction_x = 0
 	self.facing_direction_y = -1
+	self.cutscene = false
+	self.cutscene_input = {
+		move_up_pressed = true,
+		move_down_pressed = true,
+		move_left_pressed = true,
+		move_right_pressed = true,
+		aim_up_pressed = true,
+		aim_down_pressed = true,
+		aim_left_pressed = true,
+		aim_right_pressed = true,
+		move_up_released = true,
+		move_down_released = true,
+		move_left_released = true,
+		move_right_released = true,
+		aim_up_released = true,
+		aim_down_released = true,
+		aim_left_released = true,
+		aim_right_released = true,
+		aim = Vec2(0, 0),
+		move_normalized = Vec2(0, 0),
+		move_up = false,
+		move_down = false,
+		move_left = false,
+		move_right = false,
+		aim_up = false,
+		aim_down = false,
+		aim_left = false,
+		aim_right = false,
+		move_up_released = false,
+		move_down_released = false,
+		move_left_released = false,
+		move_right_released = false,
+		aim_up_released = false,
+		aim_down_released = false,
+		aim_left_released = false,
+		aim_right_released = false,
+	}
 
 	self.aim_up_pressed_at = -1
 	self.aim_down_pressed_at = -1
@@ -121,6 +161,7 @@ end
 
 function DeliveryGuy:shoot_bullet(noclip)
     if self.can_shoot then
+		self:play_sfx("player_shoot")
         self.can_shoot = false
 		local nx, ny = vec2_normalized(self.facing_direction_x, self.facing_direction_y)
         local bullet = Bullet(self.pos.x + nx * 8, self.pos.y + ny * 8, nx, ny)
@@ -135,6 +176,7 @@ end
 -- Helper methods
 
 function DeliveryGuy:on_hit(by)
+	print(by)
 	if self.invuln then
 		return
 	end
@@ -142,6 +184,9 @@ function DeliveryGuy:on_hit(by)
 end
 
 function DeliveryGuy:die()
+	self.world:play_sfx("player_death")
+    if self.dead then return end
+	self.dead = true
 	self:emit_signal("died")
 	self:queue_destroy()
 	local fx = DeathFx(self.pos.x, self.pos.y, self:get_texture(), self.flip)
@@ -353,14 +398,22 @@ function DeliveryGuy:handle_aim_input()
 
 end
 
+function DeliveryGuy:get_input_table()
+	if self.cutscene then
+		return self.cutscene_input
+	else
+		return DeliveryGuy.super.get_input_table(self)
+	end
+end
 ------------------------------------------
 -- States
 ------------------------------------------
 
 -- State: Walking
 function DeliveryGuy:state_Walking_update(dt)
-    self:handle_movement_input()
-    self:handle_aim_input()
+	local input = self:get_input_table()
+    self:handle_movement_input(self.cutscene and self.cutscene_input or nil)
+    self:handle_aim_input(self.cutscene and self.cutscene_input or nil)
 
     if self.input_move_dir.y == 0 then
         self:move(0, dt * self.world.scroll_speed * self.world.scroll_direction, nil, false)
@@ -377,12 +430,12 @@ function DeliveryGuy:state_Walking_update(dt)
     end
 
     if input.aim_up or input.aim_down or input.aim_left or input.aim_right then
-        self:shoot_bullet()
+        self:shoot_bullet(self.invuln)
     end
 
     local tile = self:get_tile_relative(0, 0, 0)
 
-    if tile and tile.data and tile.data.terrain_pit then
+    if (not self.ignore_collision) and tile and tile.data and tile.data.terrain_pit then
         self.pit_moving_dir = Vec2(0, 0)
 
         local cx, cy = self:get_cell()
@@ -397,9 +450,10 @@ function DeliveryGuy:state_Walking_update(dt)
 		local relative_cx = cx - self.pit_moving_dir.x
 		local relative_cy = cy - self.pit_moving_dir.y
 		local world_pos_x, world_pos_y = self:cell_to_world(relative_cx, relative_cy)
+
 		self.pos = Vec2(world_pos_x, world_pos_y)
 
-		if not self.ignore_collision and not self:is_cell_solid(cx + self.pit_moving_dir.x * 1, cy + self.pit_moving_dir.y * 1) then
+		if not self:is_cell_solid(cx + self.pit_moving_dir.x * 1, cy + self.pit_moving_dir.y * 1) then
 			self:change_state("PitJump")
 			return
 		end
@@ -409,13 +463,14 @@ end
 function DeliveryGuy:state_PitJump_enter()
 	
     local s = self.sequencer
+	self:play_sfx("player_jump")
     s:start(function()
 		local startx, starty = self:get_cell()
 		local endx, endy = startx + self.pit_moving_dir.x * 2, starty + self.pit_moving_dir.y * 2
         s:tween(function(t)
             local x, y = vec2_lerp(startx, starty, endx, endy, t)
 			local wx, wy = self:cell_to_world(x, y)
-			self.pos = Vec2(wx, wy - math.bump(t) * 12)
+			self.pos = Vec2(wx, wy - math.bump(t) * 15)
         end, 0, 1, 30, "linear")
 		self:change_state("Walking")
 	end)

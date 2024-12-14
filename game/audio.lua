@@ -1,6 +1,7 @@
 local audio = {
     sfx = nil,
     music = nil,
+	playing_music = nil,
     sfx_volume = 1.0,
     music_volume = 1.0,
     default_rolloff = 0.0001,
@@ -22,6 +23,7 @@ function audio.load()
 	
 	
     for _, v in ipairs(wav_paths) do
+
         local sound = audio.newSource(v, "static")
 		-- print(sound:setRolloff(audio.default_rolloff))
         local name = filesystem.filename_to_asset_name(v, "wav", "audio_")
@@ -48,18 +50,26 @@ function audio.play_sfx(src, volume, pitch, loop)
 end
 
 function audio.get_sfx(name)
+	if not audio.sfx[name] then
+		error("SFX not found: " .. name)
+	end
 	return audio.sfx[name]:clone()
 end
 
 function audio.play_music(src)
-	audio.stop_music(src)
+	audio.stop_music()
     src:setVolume(audio.music_volume)
     src:setLooping(true)
     src:play()
+	audio.playing_music = src
 end
 
-function audio.stop_music(src)
-    src:stop()
+function audio.stop_music()
+
+	if audio.playing_music then
+		audio.playing_music:stop()
+		audio.playing_music = nil
+	end
 end
 
 return audio

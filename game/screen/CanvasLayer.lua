@@ -517,7 +517,7 @@ end
 function CanvasLayer:remove_sibling(offset)
     self:emit_signal("remove_sibling_requested", self, offset)
 end
-
+ 
 ---Replace a sibling layer relative to this layer by an offset.
 ---@param name string
 ---@param offset number

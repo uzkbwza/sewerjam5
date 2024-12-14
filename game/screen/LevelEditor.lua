@@ -20,7 +20,7 @@ local PALETTE_HIDE_TIMER = 20
 
 local SAVE_READABLE = false
 
-local EDITING_MAP = "map1"
+local EDITING_MAP = "cutscene1"
 
 local no_tile_draw_paint_modes = {
 	select = true,

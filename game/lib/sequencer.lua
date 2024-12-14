@@ -111,7 +111,7 @@ function Sequencer:update(dt)
 			end
 			local status, val = coroutine.resume(value)
 			if not status then
-				error(val)
+					error(val)
 			end
 
 		end
@@ -145,6 +145,7 @@ function Sequencer:tween(func, value_start, value_end, duration, easing, step)
 	local start = self.elapsed
     local finish = self.elapsed + duration
 	local ease_func
+	easing = easing or "linear"
 	if type(easing) == "string" then
 		ease_func = ease(easing)
 	else

@@ -12,6 +12,7 @@ local SCROLL_SPEED = 1/2.5
 local MAP_WIDTH = 10
 local SCREEN_WIDTH = 176
 
+local FONT = graphics.font["PressStart2P-8"]
 
 OBJECT_MAP = {
 	enemy = O.Enemy.Enemy,
@@ -21,6 +22,7 @@ OBJECT_MAP = {
 	screen_clear = O.Misc.ScreenClear,
 	bear = O.Enemy.Bear,
 	tower = O.Enemy.Tower,
+	level_complete_tile = O.Misc.LevelCompleteTile,
 }
 
 function GameLayer:new()
@@ -39,7 +41,7 @@ function GameLayer:start(level)
     local direction = level.direction
 	local map_color = level.map_color
 	local cutscene = level.cutscene
-    self:ref("world", self:add_world(ScrollingGameWorld(level_name, direction, map_color, cutscene)))
+    self:ref("world", self:add_world(ScrollingGameWorld(level_name, direction, map_color, cutscene, level.number)))
     signal.connect(self.world, "player_died", self, "on_player_died")
 	signal.chain_connect("level_complete", self.world, self)
 end
@@ -85,6 +87,7 @@ function GlobalState:new()
             map = "map1",
 			map_color = "00ff00",
 			direction = "up",
+			number = 1,
         },
 		-- {
         --     type = "game",
@@ -124,6 +127,7 @@ function GlobalState:new()
 			map = "map2",
 			map_color = "0000ff",
 			direction = "down",
+			number = 2,
         },
 
         {
@@ -164,6 +168,7 @@ function HUDLayer:new()
 			self.score_flash = false
 		end)
 	end)
+	-- self.blocks_render = true
 end
 
 function HUDLayer:cool_text_1(x, y, text, color1, color2)
@@ -182,7 +187,7 @@ function HUDLayer:cool_text_1(x, y, text, color1, color2)
 end
 
 function HUDLayer:draw()
-	graphics.set_font(graphics.font["PressStart2P-8"])
+	graphics.set_font(FONT)
     graphics.set_color(INFO_PANEL_COLOR)
 	graphics.rect("fill", INFO_PANEL_RECT)
 	graphics.set_color(graphics.color_flash(0, 10))
@@ -253,11 +258,11 @@ function MainScreen:new()
 
     local s = self.sequencer
     s:start(function()
-        for _, level in ipairs(global_state.levels) do
+        for i, level in ipairs(global_state.levels) do
             if self.game_layer then
                 self.game_layer:destroy()
             end
-            self:ref("game_layer", self:insert_layer(GameLayer, 2))
+            self:ref("game_layer", self:insert_layer(GameLayer, 1))
             if level.type == "cutscene" or level.type == "game" then
                 if level.type == "cutscene" then
                     self:start_cutscene(level)
@@ -300,7 +305,8 @@ ScrollingGameWorld.scroll_events = {
 
 local ObjectScore = require("fx.object_score")
 
-function ScrollingGameWorld:new(level_name, direction, map_color, cutscene)
+function ScrollingGameWorld:new(level_name, direction, map_color, cutscene, level_number)
+	self.level_number = level_number
 	ScrollingGameWorld.super.new(self)
 	self:add_spatial_grid("object_grid")
 
@@ -333,6 +339,9 @@ function ScrollingGameWorld:new(level_name, direction, map_color, cutscene)
     self.scroll_size = conf.viewport_size.y
 	
 	self.scrolling = true
+	if cutscene then
+		self.scrolling = false
+	end
 
     self.map_width = MAP_WIDTH
 
@@ -353,14 +362,15 @@ function ScrollingGameWorld:new(level_name, direction, map_color, cutscene)
         "player_death",
 		"player_respawn",
 		"player_1up",
+		"cutscene_servitor_spawn",
+		"cutscene_boop",
+		"cutscene_yes_master",
+		"levelcomplete",
 	}) do
 		self:add_sfx(sfx)
 	end
 
 
-	if not cutscene then
-		audio.play_music(audio.music.loop)
-	end
 
 
 	local spawn_y_offset = self.scroll_direction == -1 and 0 or -11
@@ -424,6 +434,7 @@ function ScrollingGameWorld:new(level_name, direction, map_color, cutscene)
 
 end
 
+
 function ScrollingGameWorld:exit()
 	audio.stop_music(audio.music.loop)
 end
@@ -482,8 +493,32 @@ function ScrollingGameWorld:spawn_player(x, y, invuln)
     self:ref("player", self:add_object(O.Player.DeliveryGuy(x, y, invuln)))
 	signal.connect(self.player, "moved", self, "on_player_moved", function() self.player_x, self.player_y = self.player.pos.x, self.player.pos.y end)
 	signal.connect(self.player, "died", self, "on_player_death")
+	signal.connect(self.player, "level_complete", self, "on_player_completed_level")
 	self.player.cutscene = self.cutscene
 end
+
+function ScrollingGameWorld:clear_all_enemies()
+	for _, obj in (self.objects:ipairs()) do
+		if obj.is_enemy then
+			obj:die()
+		end
+	end
+end
+
+function ScrollingGameWorld:on_player_completed_level()
+	local s = self.sequencer
+	s:start(function()
+		self.player.cutscene = true
+		self.scrolling = false
+		audio.stop_music()
+		self:clear_all_enemies()
+		s:wait(30)
+		self:play_sfx("levelcomplete")
+		s:wait(400)
+		self:emit_signal("level_complete", true)
+	end)
+end
+
 
 function ScrollingGameWorld:process_map_data(map)
 	local min_x, min_y, max_x, max_y, min_z, max_z = map:get_bounds()
@@ -528,6 +563,100 @@ function ScrollingGameWorld:enter()
 	ScrollingGameWorld.super.enter(self)
     self:set_scroll(self.player.pos.y - self.viewport_size.y / 2)
 	self:initial_spawn()
+	if self.cutscene then
+		self.blackout = true
+		self.scrolling = false
+
+		local s = self.sequencer
+		s:start(function() 
+			self.blackout = false
+			self[self.cutscene](self)
+			self.blackout = true
+			s:wait(30)
+			signal.emit(self, "level_complete", true)
+		end)
+	else
+		self.player.cutscene = true
+		self.scrolling = false
+		local s = self.sequencer
+		s:start(function()
+			-- s:wait(120)
+			self:cutscene_text("LEVEL " .. self.level_number .. " START", 0, 0, 120, "cutscene_boop")
+			self.scrolling = true
+			self.player.cutscene = false	
+			if not cutscene then
+				audio.play_music(audio.music.loop)
+			end
+		end)
+	end
+end
+
+function ScrollingGameWorld:cutscene1()
+	local s = self.sequencer
+	local player = self.player
+	self.blackout = true
+	s:wait(60)
+
+	self:cutscene_text("A WIZARD\nTIRELESSLY PERFORMS \nHIS MYSTIC RITUAL IN\nTHE ANCIENT FOREST", 0, 0, 200, "cutscene_boop")
+	s:wait(60)
+	self.blackout = false
+	s:wait(120)
+
+	self:play_sfx("cutscene_servitor_spawn")
+	local servitor = self:add_object(O.Misc.Servitor(self.player.pos.x, self.player.pos.y - 16))
+
+	s:wait(120)
+	self:cutscene_text("FINALLY\nAFTER ALL\nTHESE YEARS", 0, 50, 120)
+	s:wait(60)
+	self:cutscene_text("I HAVE \nCREATED THE \nPERFECT SERVITOR", 0, 50, 120)
+	s:wait(90)
+	self:cutscene_text("GO FORTH AND\nFETCH ME KEBAB", 0, 50, 120)
+	s:wait(30)
+	self:cutscene_text("YES MASTER", 0, -36, 120, "cutscene_yes_master")
+	s:wait(30)
+	s:start(function()
+		s:tween(function(y) servitor.pos.y = y end, servitor.pos.y, servitor.pos.y - 100, 120)
+	end)
+	s:wait(200)
+	self.blackout = true
+	s:wait(120)
+	self.blackout = false
+	self:play_sfx("cutscene_boop")
+
+	s:wait(120 )
+	self:cutscene_text("IT HAS BEEN\nONE WEEK", 0, 50, 120)
+	s:wait(60)
+	self:cutscene_text("WHERE IS MY\nKEBAB?", 0, 50, 120)
+	s:wait(120)
+	s:tween(function(y) player.pos.y = y end, player.pos.y, player.pos.y - 116, 120)
+	s:wait(30)
+end
+
+function ScrollingGameWorld:cutscene2()
+end
+
+function ScrollingGameWorld:cutscene3()
+end
+
+function ScrollingGameWorld:cutscene_text(text, x_offset, y_offset, time, sound_file)
+	time = time or 200
+	x_offset = x_offset or 0
+	y_offset = y_offset or 0
+	local text_object = {
+		text = text,
+		x_offset = x_offset,
+		y_offset = y_offset,
+		time = time
+	}
+	self.cutscene_text_object = text_object
+	if sound_file then 
+		if not self:get_sfx(sound_file) then
+			self:add_sfx(sound_file)
+		end
+		self:play_sfx(sound_file)
+	end
+	self.sequencer:wait(time)
+	self.cutscene_text_object = nil
 end
 
 function ScrollingGameWorld:initial_spawn()
@@ -573,6 +702,7 @@ function ScrollingGameWorld:get_scroll_despawn_ycell()
 end
 
 function ScrollingGameWorld:clamp_player(allow_death)
+	if self.cutscene then return end
 	if allow_death == nil then allow_death = true end
     if self.player then
 		self.player:tp_to(clamp(self.player.pos.x, tilesets.TILE_SIZE / 2 + tilesets.TILE_SIZE, MAP_WIDTH * tilesets.TILE_SIZE + tilesets.TILE_SIZE / 2 - tilesets.TILE_SIZE), self.player.pos.y)
@@ -690,6 +820,7 @@ end
 
 function ScrollingGameWorld:draw()
 	
+
 	local spawn_y = self:get_scroll_spawn_ycell()
 	local despawn_y = self:get_scroll_despawn_ycell()
 
@@ -697,48 +828,62 @@ function ScrollingGameWorld:draw()
 	local max_y = max(spawn_y, despawn_y)
 
 
-	graphics.set_color(palette.white)
-	local x1, y1, w, h, x2, y2 = self:get_draw_rect()
-    self.map:draw_world_space("dynamic", x1, y1, x2, y2, nil, 0)
+	if not self.blackout then
+		graphics.set_color(palette.white)
+		local x1, y1, w, h, x2, y2 = self:get_draw_rect()
+		self.map:draw_world_space("dynamic", x1, y1, x2, y2, nil, 0)
 
 
-	for y=min_y, max_y do
-		for x=0, MAP_WIDTH do			
-            local wx, wy = self.map.cell_to_world(x, y, 0)
-			local color = self.map_color
-            if self:is_cell_solid(x, y, 0) then
-				if self.tick % 2 == 0 and abs((y % 38) - (floor(self.scroll_direction * -self.tick * self.scroll_speed) % 38)) < 4 then
-					color = graphics.color_flash(y * 5, 4)
+		for y=min_y, max_y do
+			for x=0, MAP_WIDTH do			
+				local wx, wy = self.map.cell_to_world(x, y, 0)
+				local color = self.map_color
+				if self:is_cell_solid(x, y, 0) then
+					if (self.scrolling) and (self.tick % 2 == 0 and abs((y % 38) - (floor(self.scroll_direction * -self.tick * self.scroll_speed) % 38)) < 4) then
+						color = graphics.color_flash(y * 5, 4)
+					end
+						-- color.a = remap(stepify(pow(sin(((y) / 1) + (self.scroll / 3)), 2), 0.25), 0, 1, 0.25, 1)
+					graphics.set_color(color)
+					local tile = self:get_tile(x, y, 0)
+					graphics.draw(tile, wx - tilesets.TILE_SIZE / 2, wy - tilesets.TILE_SIZE / 2, 0, 1, 1, tile.rotation)
 				end
-					-- color.a = remap(stepify(pow(sin(((y) / 1) + (self.scroll / 3)), 2), 0.25), 0, 1, 0.25, 1)
-				graphics.set_color(color)
-				local tile = self:get_tile(x, y, 0)
-				graphics.draw(tile, wx - tilesets.TILE_SIZE / 2, wy - tilesets.TILE_SIZE / 2, 0, 1, 1, tile.rotation)
 			end
+		end
+
+		-- self.map:draw("static", nil, nil, nil, nil, nil, 0)
+		ScrollingGameWorld.super.draw(self)
+
+		graphics.set_color(palette.white)
+		if debug.can_draw() then
+			graphics.push("all")
+			graphics.set_color(palette.yellow)
+			graphics.line(0, self.scroll - self.scroll_direction, SCREEN_WIDTH, self.scroll - self.scroll_direction)
+			local _, y = self.map.cell_to_world(0, self.scroll_spawn_ycell, 0)
+			if y then
+				graphics.set_color(palette.green)
+				graphics.line(0, y, SCREEN_WIDTH, y)
+				local _, y = self.map.cell_to_world(0, self.scroll_despawn_ycell, 0)
+				graphics.set_color(palette.blue)
+				graphics.line(0, y, SCREEN_WIDTH, y)
+			end
+			graphics.pop()
 		end
 	end
 
-	-- self.map:draw("static", nil, nil, nil, nil, nil, 0)
-    ScrollingGameWorld.super.draw(self)
 
-	graphics.set_color(palette.white)
-    if debug.can_draw() then
-        graphics.push("all")
-        graphics.set_color(palette.yellow)
-        graphics.line(0, self.scroll - self.scroll_direction, SCREEN_WIDTH, self.scroll - self.scroll_direction)
-        local _, y = self.map.cell_to_world(0, self.scroll_spawn_ycell, 0)
-        if y then
-            graphics.set_color(palette.green)
-            graphics.line(0, y, SCREEN_WIDTH, y)
-            local _, y = self.map.cell_to_world(0, self.scroll_despawn_ycell, 0)
-            graphics.set_color(palette.blue)
-            graphics.line(0, y, SCREEN_WIDTH, y)
-        end
-        graphics.pop()
-    end
-
-
-
+	if self.cutscene_text_object then
+		graphics.set_font(FONT)
+		local lines = string.split(self.cutscene_text_object.text, ("\n"))
+		for i, line in ipairs(lines) do	
+			line = string.strip_whitespace(line)
+			local width = FONT:getWidth(line)	
+			graphics.set_color(palette.black)
+			local y = stepify(self.viewport_size.y / 2 + self.cutscene_text_object.y_offset + (i - 1) * FONT:getHeight() - #lines * 0.5 * FONT:getHeight(), 8)
+			graphics.rectangle("fill", SCREEN_WIDTH / 2 + self.cutscene_text_object.x_offset - stepify(width / 2, 8), y, width, FONT:getHeight())
+			graphics.set_color(palette.white)
+			graphics.print(line, SCREEN_WIDTH / 2 + self.cutscene_text_object.x_offset - stepify(width / 2, 8), y)
+		end
+	end
 
 
     self.map:draw_world_space("dynamic", x1, y1, x2, y2, 1, nil)

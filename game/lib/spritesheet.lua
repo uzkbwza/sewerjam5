@@ -4,6 +4,10 @@ function SpriteSheet:new(texture, sprite_width, sprite_height)
     sprite_width = floor(sprite_width)
     sprite_height = floor(sprite_height)
 
+	if type(texture) == "string" then
+		texture = textures[texture]
+	end
+
     self.texture = texture
     local width, height = texture:getPixelDimensions()
     if width % sprite_width ~= 0 then

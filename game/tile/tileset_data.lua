@@ -66,6 +66,7 @@ local OBJECT_TILES = {
 	screen_clear = "sc",
 	bear = "br",
 	tower = "enemy_tower_projectile_icon1",
+	level_complete_tile = "friendly_placeholder1",
 	-- pit = "terrain_pit",
 }
 

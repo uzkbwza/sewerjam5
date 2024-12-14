@@ -198,11 +198,7 @@ function love.update(dt)
 		end
 	end
 	
-	if debug.enabled and input.debug_count_memory_pressed then 
-        filesystem.save_file(table.pretty_format(_G), "game_memory.txt")
-		-- table.pretty_print(_G)
-        table.pretty_print(debug.type_count())
-	end
+
 	
 	input.update(dt)
 	game:update(dt)
@@ -211,7 +207,11 @@ function love.update(dt)
 	if input.fullscreen_toggle_pressed then
 		love.window.setFullscreen(not love.window.getFullscreen())
 	end
-		
+	if debug.enabled and input.debug_count_memory_pressed then 
+        filesystem.save_file(table.pretty_format(_G), "game_memory.txt")
+		-- table.pretty_print(_G)
+        table.pretty_print(debug.type_count())
+	end
     debug.update(dt)
 	
 	input.post_update()

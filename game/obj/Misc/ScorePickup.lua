@@ -9,8 +9,6 @@ local SCORE = 750
 
 local ScorePickupSpawnEffect = require("fx.score_pickup_effect")
 
-
-
 function ScorePickup:new(x, y)
 	ScorePickup.super.new(self, x, y)
     self.score = SCORE

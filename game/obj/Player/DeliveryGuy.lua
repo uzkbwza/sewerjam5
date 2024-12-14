@@ -40,17 +40,20 @@ function DeliveryGuy:new(x, y, invuln)
         bump_mask = to_layer_bit(PHYSICS_HAZARD)
     }
 
-	local pickup_sensor_config = {
+	local object_sensor_config = {
         collision_rect = Rect.centered(0, 0, 16, 16),
         entered_function = function(self, other)
 			if other.is_pickup then	
 				other:pickup()
 			end
+			if other.level_complete_tile then
+				self:emit_signal("level_complete")
+			end
         end,
         bump_mask = to_layer_bit(PHYSICS_OBJECT)
 	}
     self:add_bump_sensor(hazard_sensor_config)
-	self:add_bump_sensor(pickup_sensor_config)
+	self:add_bump_sensor(object_sensor_config)
 
     self.z_index = 0
     self:set_flip(1)
@@ -176,8 +179,11 @@ end
 -- Helper methods
 
 function DeliveryGuy:on_hit(by)
-	print(by)
+	-- print(by)
 	if self.invuln then
+		return
+	end
+	if self.cutscene then
 		return
 	end
 	self:die()
@@ -415,12 +421,17 @@ function DeliveryGuy:state_Walking_update(dt)
     self:handle_movement_input(self.cutscene and self.cutscene_input or nil)
     self:handle_aim_input(self.cutscene and self.cutscene_input or nil)
 
+	local world_scroll = 0
+	if self.world.scrolling then
+		world_scroll = dt * self.world.scroll_speed * self.world.scroll_direction
+	end
+
     if self.input_move_dir.y == 0 then
-        self:move(0, dt * self.world.scroll_speed * self.world.scroll_direction, nil, false)
+        self:move(0, world_scroll, nil, false)
     end
 
     if self.input_move_dir.x ~= 0 or self.input_move_dir.y ~= 0 then
-        local ymod = dt * self.world.scroll_speed * self.world.scroll_direction * abs(self.input_move_dir.y)
+        local ymod = world_scroll * abs(self.input_move_dir.y)
         self:move(self.input_move_dir.x * self.speed * dt, (self.input_move_dir.y * self.speed * dt) + ymod)
         if self.input_move_dir.x > 0 then
             self.snapped_east = false

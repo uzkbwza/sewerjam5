@@ -1,7 +1,7 @@
 local Camera = require "obj.camera"
 local bump = require "lib.bump"
 local shash = require "lib.shash"
-local GameMap = require "map.gamemap"
+local GameMap = require "map.GameMap"
 
 local DEFAULT_CELL_SIZE = tilesets.TILE_SIZE * 2
 

@@ -212,12 +212,15 @@ function DeliveryGuy:get_texture()
 end
 
 function DeliveryGuy:draw()
+
 	if self.invuln and floor(self.tick / 2) % 2 == 0 then
 		return
 	end
 	graphics.push()
-	graphics.origin()
-	graphics.translate(self.pos.x, self.pos.y - self.world.scroll)
+	if not self.world.cutscene then
+		graphics.origin()
+		graphics.translate(self.pos.x, self.pos.y - self.world.scroll)
+	end
     graphics.draw_centered(self:get_texture(), 0, 0, 0, self.flip, 1, 0, 1)
 	graphics.pop()
 end

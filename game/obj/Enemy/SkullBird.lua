@@ -69,7 +69,7 @@ end
 
 function SkullBird:move_around()
     if not self.moving then
-		self.world:play_sfx("enemy_bonerattle")
+		self.world:play_sfx("enemy_bonerattle2")
 
 		-- self.target_cell = Vec2(self.target_cell.x, self.target_cell.y + self.world.scroll_direction)
         local player = self:get_closest_object_with_tag("player")

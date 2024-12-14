@@ -30,7 +30,9 @@ function GameLayer:new()
 	self:add_signal("level_complete")
     self.clear_color = palette.black
     signal.connect(input, "key_pressed", self, "on_key_pressed", function(key)
-		if key == "tab" then
+		if key == "tab" and debug.enabled then
+			signal.emit(self, "level_complete", true)
+		elseif key == "return" and self.world and self.world.level_data.cutscene then
 			signal.emit(self, "level_complete", true)
 		end
 	end)
@@ -42,7 +44,8 @@ function GameLayer:start(level)
 	local map_color = level.map_color
 	local cutscene = level.cutscene
     self:ref("world", self:add_world(ScrollingGameWorld(level_name, direction, map_color, cutscene, level.number)))
-    signal.connect(self.world, "player_died", self, "on_player_died")
+    self.world.level_data = level
+	signal.connect(self.world, "player_died", self, "on_player_died")
 	signal.chain_connect("level_complete", self.world, self)
 end
 
@@ -72,6 +75,7 @@ function GlobalState:new()
 	self.lives = 3
     self.level = 1
 	self.base_extra_life_threshold = 20000
+	self.cutscene = false
 	self.extra_life_threshold_increment = 10000
 	self.extra_life_threshold_increment_counter = 1
 	self.extra_life_threshold = self.base_extra_life_threshold
@@ -186,17 +190,29 @@ function HUDLayer:cool_text_1(x, y, text, color1, color2)
 	graphics.set_color(palette.white)
 end
 
+function HUDLayer:draw_cutscene() 
+	graphics.set_color(palette.black)
+	graphics.rectangle("line", 1, 1, self.viewport_size.x - 1, self.viewport_size.y - 1)
+	graphics.rectangle("line", 2, 2, self.viewport_size.x - 3, self.viewport_size.y - 3)
+end
+
 function HUDLayer:draw()
+
 	graphics.set_font(FONT)
+	if global_state.cutscene then
+		self:draw_cutscene()
+		return
+	end
     graphics.set_color(INFO_PANEL_COLOR)
 	graphics.rect("fill", INFO_PANEL_RECT)
-	graphics.set_color(graphics.color_flash(0, 10))
-	-- graphics.set_color(palette.black)
-	graphics.rectangle("line", 1, 1, SCREEN_WIDTH-2, conf.viewport_size.y - 1)
-    graphics.rectangle("line", 2, 2, SCREEN_WIDTH-2, conf.viewport_size.y - 3)
+	-- graphics.set_color(graphics.color_flash(0, 10))
+	graphics.set_color(palette.black)
+	graphics.rectangle("line", 1, 1, SCREEN_WIDTH-2, self.viewport_size.y - 1)
+    graphics.rectangle("line", 2, 2, SCREEN_WIDTH-2, self.viewport_size.y - 3)
 	-- graphics.set_color(graphics.color_flash(10, 10))
-	graphics.rectangle("line", SCREEN_WIDTH, 2, conf.viewport_size.x - SCREEN_WIDTH - 1, conf.viewport_size.y - 2)
-	graphics.rectangle("line", SCREEN_WIDTH, 1, conf.viewport_size.x - SCREEN_WIDTH - 0, conf.viewport_size.y - 2)
+	graphics.rectangle("line", SCREEN_WIDTH, 2, self.viewport_size.x - SCREEN_WIDTH - 1, self.viewport_size.y - 2)
+	graphics.rectangle("line", SCREEN_WIDTH, 1, self.viewport_size.x - SCREEN_WIDTH - 0, self.viewport_size.y - 2)
+
 
 
     local text_x = SCREEN_WIDTH + 4	
@@ -255,7 +271,6 @@ function MainScreen:new()
     global_state = GlobalState()
     self:ref("hud_layer", self:push(HUDLayer))
 
-
     local s = self.sequencer
     s:start(function()
         for i, level in ipairs(global_state.levels) do
@@ -263,13 +278,11 @@ function MainScreen:new()
                 self.game_layer:destroy()
             end
             self:ref("game_layer", self:insert_layer(GameLayer, 1))
-            if level.type == "cutscene" or level.type == "game" then
-                if level.type == "cutscene" then
-                    self:start_cutscene(level)
-                else
-                    self.game_layer:start(level)
-                end
+            if level.type == "game" then
+				self.game_layer:start(level)
+				global_state.cutscene = level.cutscene
                 s:wait_for_signal(self.game_layer, "level_complete")
+				global_state.cutscene = false
                 local success = unpack(s.signal_output)
                 if not success then
                     -- TODO: transition to end screen
@@ -283,10 +296,6 @@ function MainScreen:new()
             end
         end
     end)
-end
-
-function MainScreen:start_cutscene(level)
-
 end
 
 function MainScreen:update(dt)
@@ -352,6 +361,7 @@ function ScrollingGameWorld:new(level_name, direction, map_color, cutscene, leve
 		"player_bomb",
 		"enemy_spawn",
 		"enemy_bonerattle",
+		"enemy_bonerattle2",
 		"enemy_birdspawn",
 		"enemy_birdswoop",
         "pickup_spawn",
@@ -366,6 +376,7 @@ function ScrollingGameWorld:new(level_name, direction, map_color, cutscene, leve
 		"cutscene_boop",
 		"cutscene_yes_master",
 		"levelcomplete",
+		"levelstart",
 	}) do
 		self:add_sfx(sfx)
 	end
@@ -383,7 +394,7 @@ function ScrollingGameWorld:new(level_name, direction, map_color, cutscene, leve
             self:add_object(O.Enemy.Flyer(wx, wy)).curve_amount = 1
         end,
         flyer2 = function(x, y, z)
-            print(y)
+            -- print(y)
             if x < MAP_WIDTH / 2 then x = 0 else x = MAP_WIDTH end
             local s = self.sequencer
             y = y + 1 + spawn_y_offset
@@ -436,7 +447,7 @@ end
 
 
 function ScrollingGameWorld:exit()
-	audio.stop_music(audio.music.loop)
+	audio.stop_music()
 end
 
 
@@ -512,7 +523,7 @@ function ScrollingGameWorld:on_player_completed_level()
 		self.scrolling = false
 		audio.stop_music()
 		self:clear_all_enemies()
-		s:wait(30)
+		s:wait(90)
 		self:play_sfx("levelcomplete")
 		s:wait(400)
 		self:emit_signal("level_complete", true)
@@ -581,7 +592,8 @@ function ScrollingGameWorld:enter()
 		local s = self.sequencer
 		s:start(function()
 			-- s:wait(120)
-			self:cutscene_text("LEVEL " .. self.level_number .. " START", 0, 0, 120, "cutscene_boop")
+			self:play_sfx("levelstart")
+			self:cutscene_text("LEVEL " .. self.level_number .. " START", 0, 0, 90, nil, "flash")
 			self.scrolling = true
 			self.player.cutscene = false	
 			if not cutscene then
@@ -597,38 +609,39 @@ function ScrollingGameWorld:cutscene1()
 	self.blackout = true
 	s:wait(60)
 
-	self:cutscene_text("A WIZARD\nTIRELESSLY PERFORMS \nHIS MYSTIC RITUAL IN\nTHE ANCIENT FOREST", 0, 0, 200, "cutscene_boop")
+	self:cutscene_text("THE MAD WIZARD TIRELESSLY\nPERFORMS HIS MYSTIC RITUAL\nIN THE ANCIENT FOREST", 0, 0, 230, "cutscene_boop")
 	s:wait(60)
 	self.blackout = false
+	audio.play_music(audio.music.loop2)
 	s:wait(120)
 
 	self:play_sfx("cutscene_servitor_spawn")
-	local servitor = self:add_object(O.Misc.Servitor(self.player.pos.x, self.player.pos.y - 16))
+	local servitor = self:add_object(O.Misc.Servitor(self.player.pos.x, self.player.pos.y - 32))
 
 	s:wait(120)
-	self:cutscene_text("FINALLY\nAFTER ALL\nTHESE YEARS", 0, 50, 120)
+	self:cutscene_text("FINALLY AFTER ALL\nTHESE YEARS", 0, 50, 120)
 	s:wait(60)
-	self:cutscene_text("I HAVE \nCREATED THE \nPERFECT SERVITOR", 0, 50, 120)
+	self:cutscene_text("I HAVE CREATED \nA PERFECT SERVITOR", 0, 50, 120)
 	s:wait(90)
-	self:cutscene_text("GO FORTH AND\nFETCH ME KEBAB", 0, 50, 120)
+	self:cutscene_text("GO FORTH\nAND FETCH ME KEBAB", 0, 50, 120)
 	s:wait(30)
-	self:cutscene_text("YES MASTER", 0, -36, 120, "cutscene_yes_master")
+	self:cutscene_text("YES MASTER", 0, -36, 120, "cutscene_yes_master", "flash")
 	s:wait(30)
 	s:start(function()
-		s:tween(function(y) servitor.pos.y = y end, servitor.pos.y, servitor.pos.y - 100, 120)
+		s:tween(function(y) servitor.pos.y = y end, servitor.pos.y, servitor.pos.y - 132, 120)
 	end)
 	s:wait(200)
 	self.blackout = true
-	s:wait(120)
-	self.blackout = false
-	self:play_sfx("cutscene_boop")
-
-	s:wait(120 )
-	self:cutscene_text("IT HAS BEEN\nONE WEEK", 0, 50, 120)
+	audio.stop_music()
 	s:wait(60)
-	self:cutscene_text("WHERE IS MY\nKEBAB?", 0, 50, 120)
+	self:play_sfx("cutscene_boop")
+	self:cutscene_text("ONE WEEK LATER", 0, 0, 120)
+	s:wait(60)
+	self.blackout = false
 	s:wait(120)
-	s:tween(function(y) player.pos.y = y end, player.pos.y, player.pos.y - 116, 120)
+	self:cutscene_text("WHERE IS MY KEBAB?", 0, 50, 120, "cutscene_boop")
+	s:wait(90)
+	s:tween(function(y) player.pos.y = y end, player.pos.y, player.pos.y - 132, 120)
 	s:wait(30)
 end
 
@@ -638,7 +651,7 @@ end
 function ScrollingGameWorld:cutscene3()
 end
 
-function ScrollingGameWorld:cutscene_text(text, x_offset, y_offset, time, sound_file)
+function ScrollingGameWorld:cutscene_text(text, x_offset, y_offset, time, sound_file, color)
 	time = time or 200
 	x_offset = x_offset or 0
 	y_offset = y_offset or 0
@@ -646,7 +659,8 @@ function ScrollingGameWorld:cutscene_text(text, x_offset, y_offset, time, sound_
 		text = text,
 		x_offset = x_offset,
 		y_offset = y_offset,
-		time = time
+		time = time,
+		color = color or palette.white
 	}
 	self.cutscene_text_object = text_object
 	if sound_file then 
@@ -820,6 +834,7 @@ end
 
 function ScrollingGameWorld:draw()
 	
+	graphics.push()
 
 	local spawn_y = self:get_scroll_spawn_ycell()
 	local despawn_y = self:get_scroll_despawn_ycell()
@@ -827,6 +842,9 @@ function ScrollingGameWorld:draw()
 	local min_y = min(spawn_y, despawn_y)
 	local max_y = max(spawn_y, despawn_y)
 
+	if global_state.cutscene then
+		graphics.translate(tilesets.TILE_SIZE / 2, 0)
+	end
 
 	if not self.blackout then
 		graphics.set_color(palette.white)
@@ -835,7 +853,7 @@ function ScrollingGameWorld:draw()
 
 
 		for y=min_y, max_y do
-			for x=0, MAP_WIDTH do			
+			for x=-1, self.viewport_size.x / tilesets.TILE_SIZE do			
 				local wx, wy = self.map.cell_to_world(x, y, 0)
 				local color = self.map_color
 				if self:is_cell_solid(x, y, 0) then
@@ -870,8 +888,15 @@ function ScrollingGameWorld:draw()
 		end
 	end
 
+	graphics.pop()
 
 	if self.cutscene_text_object then
+		graphics.push()
+		
+		if global_state.cutscene then
+			graphics.translate(INFO_PANEL_RECT.width / 2, 0)
+		end
+
 		graphics.set_font(FONT)
 		local lines = string.split(self.cutscene_text_object.text, ("\n"))
 		for i, line in ipairs(lines) do	
@@ -880,11 +905,11 @@ function ScrollingGameWorld:draw()
 			graphics.set_color(palette.black)
 			local y = stepify(self.viewport_size.y / 2 + self.cutscene_text_object.y_offset + (i - 1) * FONT:getHeight() - #lines * 0.5 * FONT:getHeight(), 8)
 			graphics.rectangle("fill", SCREEN_WIDTH / 2 + self.cutscene_text_object.x_offset - stepify(width / 2, 8), y, width, FONT:getHeight())
-			graphics.set_color(palette.white)
+			graphics.set_color(self.cutscene_text_object.color == "flash" and graphics.color_flash(1, 5) or self.cutscene_text_object.color)
 			graphics.print(line, SCREEN_WIDTH / 2 + self.cutscene_text_object.x_offset - stepify(width / 2, 8), y)
 		end
+		graphics.pop()
 	end
-
 
     self.map:draw_world_space("dynamic", x1, y1, x2, y2, 1, nil)
 	-- self.map:draw("static", nil, nil, nil, nil, 1, nil)

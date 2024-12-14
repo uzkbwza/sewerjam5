@@ -1,0 +1,11 @@
+name = "sewerjam5"
+default_targets = ["win32", "win64", "lovejs"]
+build_directory = "makelove-build"
+
+love_files = [
+    "*",                  # Include all files by default
+    "-./.git",            # Exclude the .git folder
+    "-./.git/**",         # Exclude everything inside the .git folder
+    "-./makelove-build",  # Exclude the makelove-build folder
+    "-./makelove-build/**"# Exclude everything inside the makelove-build folder
+]

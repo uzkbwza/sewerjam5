@@ -618,7 +618,7 @@ function ScrollingGameWorld:cutscene1()
 	self:play_sfx("cutscene_servitor_spawn")
 	local servitor = self:add_object(O.Misc.Servitor(self.player.pos.x, self.player.pos.y - 32))
 
-	s:wait(150)
+	s:wait(120)
 	self:cutscene_text("FINALLY AFTER ALL\nTHESE YEARS", 0, 50, 120)
 	s:wait(60)
 	self:cutscene_text("I HAVE CREATED \nA PERFECT SERVITOR", 0, 50, 120)

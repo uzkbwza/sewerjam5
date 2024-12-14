@@ -1,1 +1,0 @@
--- TODO: like bump, cells are what contain layer tables. only one spatial grid is needed.

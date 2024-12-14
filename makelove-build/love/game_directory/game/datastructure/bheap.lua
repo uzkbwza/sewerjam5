@@ -1,2 +1,0 @@
-Bheap = Object:extend("Bheap")
-

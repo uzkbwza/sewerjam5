@@ -97,7 +97,7 @@ function Sequencer:init_coroutine(co)
 end
 function Sequencer:update(dt)
 
-	if table.is_empty(self.running) then
+	if (not self.running) or table.is_empty(self.running) then
 		return
 	end
 

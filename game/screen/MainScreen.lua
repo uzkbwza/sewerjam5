@@ -623,7 +623,7 @@ function ScrollingGameWorld:cutscene1()
 	s:wait(60)
 	self:cutscene_text("I HAVE CREATED \nA PERFECT SERVITOR", 0, 50, 120)
 	s:wait(90)
-	self:cutscene_text("GO FORTH\nAND FETCH ME KEBAB", 0, 50, 120)
+	self:cutscene_text("NOW GO FORTH\nAND FETCH ME KEBAB", 0, 50, 120)
 	s:wait(30)
 	self:cutscene_text("YES MASTER", 0, -36, 120, "cutscene_yes_master", "flash")
 	s:wait(30)
@@ -892,6 +892,7 @@ function ScrollingGameWorld:draw()
 
 	if self.cutscene_text_object then
 		graphics.push()
+		graphics.origin()
 		
 		if global_state.cutscene then
 			graphics.translate(INFO_PANEL_RECT.width / 2, 0)

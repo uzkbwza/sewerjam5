@@ -133,6 +133,10 @@ function GameMap:erase_tiles()
 	self.tile_info = nil
 end
 
+function GameMap.bump_tile_tostring()
+	return "GameMapBumpTile"
+end
+
 function GameMap:build()
     -- TODO: rework this function. separate into initializing object regions, drawing regions, and querying regions.
     -- TODO: these functions should not be just called one time. you should be able to update the tilemap at runtime.
@@ -147,6 +151,9 @@ function GameMap:build()
     self.tile_objects = {}
     self.dynamic_batches = {}
     self.static_batches = {}
+	local bump_tile_mt = {
+		__tostring = GameMap.bump_tile_tostring
+	}
 
     for x, y, z, tile_string in self.tile_map:iter() do
         if z < self.min_layer then self.min_layer = z end
@@ -190,6 +197,7 @@ function GameMap:build()
                 solid = not data.passable,
                 collision_rect = collision_rect,
             }
+			setmetatable(collision_data, bump_tile_mt)
 
             table.populate_recursive(self.collision_objects, z, y, x, collision_data)
         end

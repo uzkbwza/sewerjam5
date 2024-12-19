@@ -105,6 +105,7 @@ function CanvasLayer:init_layer(layer)
 
     layer.root = self.root
     layer.parent = self
+
     layer:enter()
 end
 
@@ -131,7 +132,7 @@ end
 
 ---@param layer_name string
 function CanvasLayer:push(layer_name)
-    return self:insert_layer(layer_name, 1)
+    return self:insert_layer(layer_name, #self.children + 1)
 end
 
 function CanvasLayer:pop()
@@ -377,6 +378,7 @@ end
 function CanvasLayer:add_world(world)
     table.insert(self.worlds, world)
     world.viewport_size = self.viewport_size
+	world.canvas_layer = self
     self:bind_destruction(world)
     world:enter_shared()
     return world
@@ -413,7 +415,8 @@ function CanvasLayer:update_shared(dt)
 
     -- Update input state
     local process_input = true
-    for _, layer in ipairs(self.children) do
+    for i=#self.children, 1, -1 do
+        local layer = self.children[i]
         layer.input = process_input and input or input.dummy
         if layer.blocks_input then
             process_input = false
@@ -422,7 +425,8 @@ function CanvasLayer:update_shared(dt)
 
     self:update_worlds(dt)
 
-    for _, layer in ipairs(self.children) do
+    for i=#self.children, 1, -1 do
+        local layer = self.children[i]
         layer:update_shared(dt)
         if layer.blocks_logic then
             break

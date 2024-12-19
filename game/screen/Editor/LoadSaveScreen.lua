@@ -6,6 +6,7 @@ function LoadSaveScreen:new()
 	self.blocks_render = true
 	self.blocks_logic = true
 	self.blocks_input = true
+	self.text = ""
 end
 
 function LoadSaveScreen:enter()
@@ -26,8 +27,10 @@ end
 
 function LoadSaveScreen:draw()
 	love.graphics.setColor(1, 1, 1, 1)
-	-- love.graphics.rectangle("fill", 0, 0, self.viewport_size.x, self.viewport_size.y)
-	love.graphics.print(self.text, 0, 0)
+    -- love.graphics.rectangle("fill", 0, 0, self.viewport_size.x, self.viewport_size.y)
+	if self.text then
+		love.graphics.print(self.text, 0, 0)
+	end
 	graphics.push()
 	graphics.translate(0, self.tile_data_input_box.pos.y)
 	graphics.set_font(graphics.font["PixelOperator8"])

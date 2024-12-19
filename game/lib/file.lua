@@ -96,6 +96,18 @@ function file.get_modules(path, recursive, t, path_prefix)
 	return t
 end
 
+function file.read(path)
+    local file = love.filesystem.newFile(path)
+    file:open("r")
+    return file:read()
+end
+
+function file.write(path, data)
+    local file = love.filesystem.newFile(path)
+    file:open("w")
+    file:write(data)
+    file:close()
+end
 
 function file.path_process(path)
     if love.system.getOS() == "Windows" then

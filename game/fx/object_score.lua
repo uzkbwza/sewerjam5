@@ -26,7 +26,7 @@ function ObjectScore:draw(elapsed, ticks, t)
 
 	
 	if self.label or self.score >= 750 then
-		local layers = min(floor(yoffs), self.label and 5 or (self.score / 200))
+		local layers = min(floor(yoffs), self.label and 5 or min(self.score / 200, 10))
         for i = 1, layers do
             graphics.set_color(palette.white)
             graphics.print_outline_no_diagonals(graphics.color_flash(i, 2), text, -text_width / 2,

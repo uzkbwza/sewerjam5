@@ -5,7 +5,7 @@ local audio = {
     sfx_volume = 1.0,
     music_volume = 1.0,
     default_rolloff = 0.0001,
-	default_z_pos = 300
+	default_z_pos = 0
 }
 
 audio = setmetatable(audio, { __index = love.audio })
@@ -19,20 +19,18 @@ function audio.load()
 	audio.music = music
 	
     local wav_paths = filesystem.get_files_of_type("assets/audio", "wav", true)
-    local mp3_paths = filesystem.get_files_of_type("assets/audio", "mp3", true)
-	
+    local ogg_paths = filesystem.get_files_of_type("assets/audio", "ogg", true)
 	
     for _, v in ipairs(wav_paths) do
 
         local sound = audio.newSource(v, "static")
-		-- print(sound:setRolloff(audio.default_rolloff))
         local name = filesystem.filename_to_asset_name(v, "wav", "audio_")
         sfx[name] = sound
     end
 	
-    for _, v in ipairs(mp3_paths) do
+    for _, v in ipairs(ogg_paths) do
         local sound = audio.newSource(v, "stream")
-        local name = filesystem.filename_to_asset_name(v, "mp3", "audio_")
+        local name = filesystem.filename_to_asset_name(v, "ogg", "audio_")
         music[name] = sound
     end
 end
@@ -42,10 +40,13 @@ function audio.set_position(x, y, z)
 end
 
 function audio.play_sfx(src, volume, pitch, loop)
-	loop = loop or false
+	if src:isPlaying() then
+		src:stop()
+	end
+	if loop == nil then loop = false end
     src:setVolume(volume and (volume * audio.sfx_volume) or audio.sfx_volume)
     src:setPitch(pitch or 1.0)
-	src:setLooping(loop or false)
+	src:setLooping(loop)
 	src:play()
 end
 
@@ -56,9 +57,9 @@ function audio.get_sfx(name)
 	return audio.sfx[name]:clone()
 end
 
-function audio.play_music(src)
+function audio.play_music(src, volume)
 	audio.stop_music()
-    src:setVolume(audio.music_volume)
+    src:setVolume(volume and (volume * audio.music_volume) or audio.music_volume)
     src:setLooping(true)
     src:play()
 	audio.playing_music = src

@@ -101,6 +101,16 @@ function math.bump(x)
     return math.cos((x - 0.5) * math.pi)
 end
 
+function math.tri(t)
+    local period = 2 * math.pi
+    local x = t % period
+    if x < math.pi then
+        return -1 + (2 * x / math.pi)
+    else
+        return 3 - (2 * x / math.pi)
+    end
+end
+
 function stepify_floor_safe(s, step)
 	step = step or 1
 	if step == 0 then return floor(s) end

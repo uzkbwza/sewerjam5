@@ -49,7 +49,7 @@ function StateMachine:change_state(to, ...)
     end
 
     self.current_state = self.states[to]
-    if self.current_state == nil then error("state doesn't exist: " .. to) end
+    if self.current_state == nil then error("state doesn't exist: " .. tostring(to)) end
 
     self.current_state.enter(...)
 end

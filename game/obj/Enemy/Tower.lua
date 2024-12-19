@@ -25,7 +25,6 @@ end
 function Tower:update(dt)
 	if self.tick > 90 and not self:timer_running("shoot") then
         self:start_timer("shoot", 90)
-		print("shoot")
 		self:spawn_object(TowerProjectile(self.pos.x, self.pos.y - 8))
 	end
 end

@@ -12,6 +12,10 @@ function rng.randf(min, max)
 	return min + random() * (max - min)
 end
 
+function rng.chance(chance)
+	return (rng()) < chance
+end
+
 function rng.percent(chance)
 	return (rng() * 100) < chance
 end
@@ -47,6 +51,15 @@ end
 
 function rng.random_vec2()
 	return angle_to_vec2_unpacked(rng.random_angle())
+end
+
+function rng.choose(...)
+	local args = {...}
+	if #args == 1 and type(args[1]) == "table" then
+		return args[1][random(1, #args[1])]
+	else
+		return args[random(1, #args)]
+	end
 end
 
 local function _meta_call_random(table, min, max)

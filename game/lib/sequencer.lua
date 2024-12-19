@@ -91,6 +91,12 @@ function Sequencer:loop(func, times)
 	end
 end
 
+function Sequencer:clear_all()
+	self.running = {}
+	self.running_indices = {}
+	self.suspended = {}
+end
+
 function Sequencer:init_coroutine(co)
     table.insert(self.running, co)
 	self.running_indices[co] = #self.running
@@ -206,7 +212,9 @@ function Sequencer:wait_for_signal(obj, signal_id)
         end,
 			true)
     if signal.get(obj, "destroyed") then
-        signal.connect(obj, "destroyed", self, "cancel_chain", function() self:stop(chain) end, true)
+		if not signal.get(obj, "destroyed", self, "cancel_chain") then
+			signal.connect(obj, "destroyed", self, "cancel_chain", function() self:stop(chain) end, true)
+		end
     end
 	coroutine.yield()
 end

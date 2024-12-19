@@ -173,7 +173,7 @@ function graphics.screen_pos_to_canvas_pos(sposx, sposy)
 end
 
 local flash_table = {
-    Color.from_hex("ffff00"),
+    Color.from_hex("ff0000"),
     Color.from_hex("ff8000"),
     Color.from_hex("ffff00"),
     Color.from_hex("80ff00"),
@@ -194,6 +194,9 @@ function graphics.color_flash(offset, tick_length)
 	return color
 end
 
+function graphics.set_line_width(width)
+	love.graphics.setLineWidth(width)
+end
 
 function graphics.start_rumble(intensity, duration, easing_function)
     local s = graphics.sequencer

@@ -8,10 +8,13 @@ local BulletHitSpriteSheet = SpriteSheet(textures.fx_bullethit, 16, 16)
 local sensor_config = {
 	collision_rect = Rect.centered(0, 0, 15, 15),
 	entered_function = function(self, other)
-        if other.is_hittable then
+        if other.is_hittable and self.hit_objects[other] == nil then
             other:on_hit(self)
+			self.hit_objects[other] = true
+        end
+		if not other.bullet_passthrough then
+			self:hit_something()
 		end
-		self:hit_something()
 	end,
 	bump_mask = to_layer_bit(PHYSICS_ENEMY, PHYSICS_TERRAIN)
 }
@@ -22,11 +25,13 @@ function DeliveryGuyBullet:new(x, y, direction_x, direction_y)
 	self.collision_offset = Vec2(-1, -1)
     self:implement(Mixins.Behavior.BumpCollision)
 	self:add_elapsed_ticks()
-	self.direction = Vec2(direction_x, direction_y)
+	self.direction = Vec2(direction_x, direction_y):normalized()
 	self.z_index = 0
+	self.hit_objects = {}
 	self.damage = 1
     self:add_bump_sensor(sensor_config)
     self:enable_bump_mask(PHYSICS_TERRAIN, PHYSICS_ENEMY)
+	-- self:enable_bump_layer(PHYSICS_PLAYER)
 	
 end
 
@@ -65,11 +70,16 @@ function DeliveryGuyBullet:update(dt)
     local startx, starty = self.last_positions[1], self.last_positions[2]
 	local col = self.bump_world:raycast(startx, starty, self.pos.x, self.pos.y, nil, PHYSICS_TERRAIN)
     if col then
-		if col.item.is_hittable then
-			col.item:on_hit(self)
-		elseif not self.noclip and not col.item.bullet_passthrough then
-			self:hit_something()
-		end
+        if col.item.is_hittable and self.hit_objects[col.item] == nil then
+            col.item:on_hit(self)
+			self.hit_objects[col.item] = true
+        elseif not self.noclip and not col.item.bullet_passthrough then
+            self:hit_something()
+        end
+    end
+
+	if not global_state.hudless_level and (self.pos.x < self.world.player_min_x - 8 or self.pos.x > self.world.player_max_x + 8) then
+		self:hit_something()
 	end
 end
 
@@ -100,11 +110,22 @@ function DeliveryGuyBullet:draw()
         local_points[i + 1] = self.last_positions[i + 1] - self.pos.y
     end
 	local_points[#local_points + 1] = 0
-	local_points[#local_points + 1] = 0
+    local_points[#local_points + 1] = 0
+	
     if self.last_positions and #self.last_positions > 2 then
-        graphics.push()
+    
+		graphics.push()
         graphics.translate(0, 1)
         graphics.set_color(palette.black)
+        if self.noclip then
+			local startx, starty = self:to_local(self.last_positions[1], self.last_positions[2])
+            local endx, endy = self:to_local(self.pos.x, self.pos.y)
+			local res = 30
+            for i = 1, res do
+				local x, y = lerp(startx, endx, i / res), lerp(starty, endy, i / res)
+				graphics.circle("fill", x, y + 4, 4)
+			end
+		end
         graphics.line(local_points)
 		graphics.pop()
 		graphics.set_color(graphics.color_flash(0, 2))

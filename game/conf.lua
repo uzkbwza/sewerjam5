@@ -47,7 +47,7 @@ local conf = {
 	use_fixed_delta = false,
 	fixed_tickrate = 60,
     max_delta_seconds = 1/60,
-	max_fps = 900,
+	max_fps = 500,
     max_fixed_ticks_per_frame = 1,
 
 	-- input
@@ -69,54 +69,74 @@ local conf = {
 
 		move_up = {
 			keyboard = {"w"},
-			-- joystick = {"dpup"},
-			-- joystick_axis = {
-			-- 	axis = "lefty",
-			-- 	dir = -1
-			-- }
+			joystick = {"dpup"},
+			joystick_axis = {
+				axis = "lefty",
+				dir = -1
+			}
 		},
 
 		move_down = {
 			keyboard = {"s"},
-			-- joystick = {"dpdown"},
-			-- joystick_axis = {
-			-- 	axis = "lefty",
-			-- 	dir = 1
-			-- }
+			joystick = {"dpdown"},
+			joystick_axis = {
+				axis = "lefty",
+				dir = 1
+			}
 		},
 
 		move_left = {
 			keyboard = {"a"},
-			-- joystick = {"dpleft"},
-			-- joystick_axis = {
-			-- 	axis = "leftx",
-			-- 	dir = -1
-			-- }
+			joystick = {"dpleft"},
+			joystick_axis = {
+				axis = "leftx",
+				dir = -1
+			}
 		},
 
 		move_right = {
 			keyboard = {"d"},
-			-- joystick = {"dpright"},
-			-- joystick_axis = {
-			-- 	axis = "leftx",
-			-- 	dir = 1
-			-- }
+			joystick = {"dpright"},
+			joystick_axis = {
+				axis = "leftx",
+				dir = 1
+			}
 		},
 
 		aim_up = {
-			keyboard = {"up"},
+            keyboard = { "up" },
+			joystick = { "y" },
+			joystick_axis = {
+				axis = "righty",
+				dir = -1
+			}
 		},
 
 		aim_down = {
 			keyboard = {"down"},
-        },
+			joystick = { "a" },
+			joystick_axis = {
+				axis = "righty",
+				dir = 1
+			}
+		},
 		
 		aim_left = {
 			keyboard = {"left"},
+			joystick = { "x" },
+			joystick_axis = {
+				axis = "rightx",
+				dir = -1
+			}
 		},
 
 		aim_right = {
 			keyboard = {"right"},
+			joystick = { "b" },
+			joystick_axis = {
+				axis = "rightx",
+				dir = 1
+			}
 		},
 
 		fullscreen_toggle = {
@@ -125,6 +145,11 @@ local conf = {
 				{"ralt", "return"},
 				{"lalt", "return"}
 			}
+		},
+
+		confirm = {
+			keyboard = { "return", "escape" },
+			joystick = { "start" }
 		},
 
 		debug_editor_toggle = {

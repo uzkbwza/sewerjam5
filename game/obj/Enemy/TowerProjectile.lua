@@ -7,7 +7,7 @@ TowerProjectile.speed = 1.5
 function TowerProjectile:new(x, y)
     self.collision_rect = Rect.centered(0, 0, 4, 4)
     TowerProjectile.super.new(self, x, y)
-	-- self.invulnerable = true
+	-- self.invuln = true
 	self:init_health(3)
     self.score = 150
 	self.z_index = 1

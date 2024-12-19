@@ -65,7 +65,8 @@ function GameObject:ref(name, object)
         self:unref(name)
     end
     self[name] = object
-	signal.connect(object, "destroyed", self, "on_ref_destroyed", function() self[name] = nil end)
+    signal.connect(object, "destroyed", self, "on_ref_destroyed", function() self[name] = nil end, true)
+	return object
 end
 
 function GameObject:unref(name)
@@ -171,6 +172,10 @@ function GameObject:timer_running(name)
     return self.timers and self.timers[name] ~= nil
 end
 
+function GameObject:stop_timer(name)
+	self.timers[name] = nil
+end
+
 function GameObject:start_timer(name, duration, callback)
     if callback == nil and type(name) == "number" then
 		callback = duration
@@ -178,19 +183,22 @@ function GameObject:start_timer(name, duration, callback)
         name = self.timers and #self.timers + 1 or 1
 	end
 	
-	if self.timers == nil then
+    if self.timers == nil then
         self.timers = {}
-		self:add_update_function(function(obj, dt)
-			for k, v in pairs(obj.timers) do
-				v.elapsed = v.elapsed + dt
+        self:add_update_function(function(obj, dt)
+            for k, v in pairs(obj.timers) do
+                v.elapsed = v.elapsed + dt
                 if v.elapsed >= v.duration then
-					if v.callback then
-						v.callback(obj)
-					end
 					obj.timers[k] = nil
-				end
-			end
-		end)
+                    if v.callback then
+                        v.callback(obj)
+                    end
+                end
+            end
+        end)
+    end
+    if self.timers[name] then
+		self:stop_timer(name)
 	end
 	self.timers[name] = {
 		duration = duration,

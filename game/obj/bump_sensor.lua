@@ -36,6 +36,12 @@ function BumpSensor:new(owner, config)
 	self.static = config.static
     self.query_table = {}
 
+	for k, v in pairs(config) do
+		if self[k] == nil then
+			self[k] = v
+		end
+	end
+
 	self:implement(Mixins.Behavior.BumpLayerMask)
 
 	local base_filter = BumpSensor.base_filter(config.sense_objects, config.sense_sensors)
@@ -62,7 +68,7 @@ end
 function BumpSensor.base_filter(sense_objects, sense_sensors)
     return function(other)
         return (sense_objects and Object.is(other, GameObject)) or
-            (sense_sensors and other.is_sensor and other.is_monitorable)
+            (sense_sensors and other.is_sensor and other.monitorable)
     end
 end
 
@@ -123,11 +129,15 @@ function BumpSensor:monitor()
 	-- 	print(len)
 	-- end
 
+	for i=1, len do
+		local item = items[i]
+		if item.is_sensor then
+			items[i] = item.owner
+		end
+	end
+
 
     for item, _ in pairs(monitored) do
-        if item.is_sensor then
-			item = item.owner
-		end
         monitored[item] = false
     end
 

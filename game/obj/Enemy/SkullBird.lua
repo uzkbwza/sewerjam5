@@ -1,5 +1,6 @@
 
 local SkullBird = require("obj.Enemy.Enemy"):extend("SkullBird")
+local Wall = require("obj.Enemy.Wall")
 
 function SkullBird:new(x, y)
     -- self.state = "Idle"
@@ -13,6 +14,7 @@ function SkullBird:new(x, y)
     self.target_cell = Vec2(0, 0)
     self.last_move_direction = Vec2(0, 1)
 	self.reversed = false
+	self.is_skullbird = true
 end
 
 function SkullBird:enter()
@@ -26,11 +28,11 @@ function SkullBird:get_texture()
     return floor(self.tick / 5) % 2 == 0 and textures.enemy_skullbird1 or textures.enemy_skullbird2
 end
 
-function SkullBird:is_skullbird_at_cell(x, y)
+function SkullBird:is_solid_object_at_cell(x, y)
 	local enemies = self:get_enemies_at_cell(x, y)
     for _, enemy in ipairs(enemies) do
 		if enemy == self then goto continue end
-		if enemy.is and enemy:is(SkullBird) then
+		if enemy.is and (enemy:is(SkullBird) or enemy:is(Wall)) then
 			return true
 		end
 		::continue::
@@ -91,7 +93,7 @@ function SkullBird:move_around()
 
 		
 		local c = 0
-        while self:is_cell_solid(next_cell_x, next_cell_y, 0) or self:is_skullbird_at_cell(next_cell_x, next_cell_y) do
+        while self:is_cell_solid(next_cell_x, next_cell_y, 0) or self:is_solid_object_at_cell(next_cell_x, next_cell_y) do
             self.target_cell = self.target_cell * 0
             if rng.coin_flip() then
                 self.target_cell = Vec2(current_cell_x + rng.sign(), current_cell_y)
@@ -108,7 +110,7 @@ function SkullBird:move_around()
             self.target_cell = self.target_cell + self.last_move_direction
         end
 		
-		local enemies_at_own_cell = self:is_skullbird_at_cell(current_cell_x, current_cell_y)
+		local enemies_at_own_cell = self:is_solid_object_at_cell(current_cell_x, current_cell_y)
 		if enemies_at_own_cell then
 			self.target_cell = Vec2(current_cell_x, current_cell_y) - self.last_move_direction
 		end
@@ -126,7 +128,7 @@ function SkullBird:move_around()
 
 		local immediate = enemies_at_own_cell
 		-- print(#objects)
-        if self:is_skullbird_at_cell(next_cell_x, next_cell_y) then
+        if self:is_solid_object_at_cell(next_cell_x, next_cell_y) then
         	self:move_toward_cell(current_cell_x, current_cell_y, self.speed, immediate)
 		else
 			self:move_toward_cell(self.target_cell.x, self.target_cell.y, self.speed, immediate)

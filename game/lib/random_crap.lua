@@ -105,6 +105,14 @@ function seconds_to_frames(n)
 	return n * 60
 end
 
+function frames_to_minutes(n)
+	return (n / 3600)
+end
+
+function minutes_to_frames(n)
+	return n * 3600
+end
+
 function xy_to_id(x, y, width)
     return ((y - 1) * width + (x - 1)) + 1
 end
@@ -145,7 +153,7 @@ function world_to_room_id(x, y)
 end
 
 function world_to_room(x, y)
-    return x / conf.room_size.x, y / conf.room_size.y
+    return floor(x / conf.room_size.x), floor(y / conf.room_size.y)
 end
 
 function room_to_world(x, y)

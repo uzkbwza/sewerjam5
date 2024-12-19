@@ -42,7 +42,6 @@ function Rumble:stop_rumble()
 end
 
 function Rumble:frame_rumble(intensity)
-
 end
 
 return Rumble

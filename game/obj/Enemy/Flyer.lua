@@ -20,7 +20,9 @@ end
 
 function FlyerEnemy:update(dt)
     if self.waiting then
-        self:tp(0, self.world.scroll_speed * self.world.scroll_direction * dt)
+		if self.world.scrolling then
+        	self:tp(0, self.world.scroll_speed * self.world.scroll_direction * dt)
+		end
         if self.fx then
             self.fx:tp_to(self.pos.x, self.pos.y)
 			if self.fx.tick > self.fx.duration - 10 then
@@ -35,7 +37,12 @@ function FlyerEnemy:get_texture()
 end
 
 function FlyerEnemy:enter()
-	self.pos.y = self.pos.y + 16 * -self.world.scroll_direction
+
+	local ydir = -self.world.scroll_direction
+	if not self.world.scrolling then
+		ydir = 1
+	end
+	self.pos.y = self.pos.y + 16 * ydir
 	local cx, cy = self:get_cell()
 	local endx = self.world.map.cell_to_world(self.world.map_width, cy, 0) + 16
 	local startx = 0
@@ -44,7 +51,8 @@ function FlyerEnemy:enter()
 		endx = -16
 	end
 	local starty = self.pos.y
-	local endy = self.pos.y + 80 * self.curve_amount
+    local endy = self.pos.y + 80 * self.curve_amount * ydir
+
     local s = self.sequencer
 	local fx = DeathFx(self.pos.x, self.pos.y, self.sprite, sign(endx - startx))
 	self:ref("fx", fx)
@@ -63,14 +71,14 @@ function FlyerEnemy:enter()
         s:wait(15)
 		self.world:play_sfx("enemy_birdswoop")
         local frame = 2
-		if self.curve_amount < 0 then
+		if self.curve_amount * ydir < 0 then
 			frame = 3
 		end
 		self.sprite = sheet:get_frame(frame)
 
 		self.waiting = false
         s:tween(function(t)
-			local curve = math.tent(t) * 16 * self.curve_amount
+			local curve = math.tent(t) * 16 * self.curve_amount * ydir
 			self:tp_to(lerp(startx, endx, t), lerp(starty, endy, t) + curve)
         end, 0, 1, 75, "linear")
 		self:queue_destroy()

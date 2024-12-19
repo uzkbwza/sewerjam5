@@ -298,6 +298,13 @@ local function outInBounce(t)
     end
 end
 
+local function constant0(t)
+    return 0
+end
+
+local function constant1(t)
+    return 1
+end
 
 local ease = {
 	linear    = linear,
@@ -310,7 +317,8 @@ local ease = {
 	inCirc    = inCirc,    outCirc    = outCirc,    inOutCirc    = inOutCirc,    outInCirc    = outInCirc,
 	inElastic = inElastic, outElastic = outElastic, inOutElastic = inOutElastic, outInElastic = outInElastic,
 	inBack    = inBack,    outBack    = outBack,    inOutBack    = inOutBack,    outInBack    = outInBack,
-	inBounce  = inBounce,  outBounce  = outBounce,  inOutBounce  = inOutBounce,  outInBounce  = outInBounce
+	inBounce  = inBounce,  outBounce  = outBounce,  inOutBounce  = inOutBounce,  outInBounce  = outInBounce,
+	constant0 = constant0, constant1 = constant1
 }
 
 -- keeping this around so you remember that you did this wrong

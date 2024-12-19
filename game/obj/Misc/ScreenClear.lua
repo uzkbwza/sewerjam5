@@ -8,6 +8,7 @@ function ScreenClear:new(x, y)
     self.score = 1500
     self.sprite = textures.friendly_placeholder1
     self.lifetime = 1200
+	self.is_kebab = false
     self.z_index = 10
 	self.my_sfx = "player_bomb"
 end

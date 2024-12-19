@@ -35,7 +35,6 @@ Game = require "game"
 
 game = Game()
 
-
 local function manual_gc(time_budget, memory_ceiling, disable_otherwise)
 	time_budget = time_budget or 1e-3
 	memory_ceiling = memory_ceiling or math.huge
@@ -62,7 +61,7 @@ local function manual_gc(time_budget, memory_ceiling, disable_otherwise)
 end
 
 local function step(dt)
-	local frame_start = love.timer.getTime()
+    local frame_start = love.timer.getTime()
 
     if love.update then love.update(dt) end -- will pass 0 if love.timer is disabled
 
@@ -75,10 +74,10 @@ local function step(dt)
         love.graphics.present()
     end
 
-	local frame_end = love.timer.getTime()
-	frame_length = frame_end - frame_start
-	
+    local frame_end = love.timer.getTime()
+    frame_length = frame_end - frame_start
 end
+
 function love.run()
 
 	if love.math then
@@ -170,8 +169,6 @@ function love.run()
 		manual_gc(0.001, math.huge, false)
 
 	end
-	
-	
 end
 
 function love.load()
@@ -199,7 +196,8 @@ function love.update(dt)
 	end
 	
 
-	
+	dt = dt * gametime.scale
+
 	input.update(dt)
 	game:update(dt)
 	
@@ -229,7 +227,6 @@ function love.update(dt)
 		-- dbg("secondary", input.secondary)
 	end
 	-- collectgarbage()
-
 end
 
 function love.draw()

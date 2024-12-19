@@ -1,5 +1,5 @@
----@diagnostic disable: lowercase-global
 Rect = Object:extend("Rect")
+---@diagnostic disable: lowercase-global
 
 function Rect:new(x, y, width, height)
     self.x = x or 0

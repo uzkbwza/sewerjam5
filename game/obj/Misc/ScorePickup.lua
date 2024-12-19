@@ -14,13 +14,14 @@ function ScorePickup:new(x, y)
     self.score = SCORE
     self.sprite = sheet:random()
     self.z_index = -1
-    self:add_elapsed_ticks()
 	self.collision_rect = Rect.centered(0, 0, 16, 16)
+    self:add_elapsed_ticks()
     self:implement(Mixins.Behavior.BumpCollision)
     self:enable_bump_layer(PHYSICS_OBJECT)
 	self.is_pickup = true
-	self.lifetime = 400
+    self.lifetime = 400
     self.my_sfx = "player_pickup"
+	self.is_kebab = true
 end
 
 function ScorePickup:enter()
@@ -40,7 +41,9 @@ function ScorePickup:pickup()
     self:spawn_object(ObjectScoreFx(self.pos.x, self.pos.y, self.score))
     self:spawn_object(DeathFx(self.pos.x, self.pos.y, self.sprite, self.flip))
 	self.world:play_sfx(self.my_sfx)
-
+	if self.is_kebab then
+		global_state.kebabs = global_state.kebabs + 1
+	end
 
 end
 

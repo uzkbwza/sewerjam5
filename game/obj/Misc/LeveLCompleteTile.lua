@@ -11,7 +11,7 @@ end
 function LevelCompleteTile:draw()
 	if debug.can_draw() then
 		graphics.draw_centered(textures.friendly_placeholder1, 0, 0)
-	end
+	end 
 end
 
 return LevelCompleteTile

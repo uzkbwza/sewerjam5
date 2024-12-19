@@ -20,7 +20,7 @@ local PALETTE_HIDE_TIMER = 20
 
 local SAVE_READABLE = false
 
-local EDITING_MAP = "cutscene1"
+local EDITING_MAP = "map2"
 
 local no_tile_draw_paint_modes = {
 	select = true,
@@ -186,7 +186,6 @@ function LevelEditor:new(x, y, width, height)
 end
 
 function LevelEditor:load(map_name)
-    -- local success, map_data = pcall(function() return require("map.maps." .. map_name .. ".map") end)
 		
     local map_string = filesystem.load_file_native("map/maps/" .. map_name .. "/tiles.lua")
 	
@@ -197,10 +196,6 @@ function LevelEditor:load(map_name)
 
 	local map_data = table.deserialize(map_string)
 
-    -- if not success then
-    --     print("failed to load " .. map_name)
-	-- 	return	
-	-- end
 
 	self.map_name = map_name
 
@@ -465,7 +460,7 @@ function LevelEditor:on_key_pressed_drawing_area(key)
 		if key == "l" then
 			self.loading = true
 			self.load_save_text = "load map"
-			self:push_to_parent("Editor.LoadSaveScreen")
+			self.parent:insert_layer("Editor.LoadSaveScreen", 1)
 		end
         if key == "s" then
             -- local string = self:get_level_string()
@@ -1969,8 +1964,10 @@ function LevelEditor:draw()
 		graphics.print(self.paint_mode, 0, 0)
 		graphics.push("all")
 		graphics.set_color(palette.c56)
-		graphics.set_font(graphics.font["PixelOperatorMono8"])
-		graphics.print(string.format("%+4i,%+4i,%8i", self.mcell.x, self.mcell.y, world_to_room_id(self.mpos.x, self.mpos.y)), 48, 0)
+        graphics.set_font(graphics.font["PixelOperatorMono8"])
+        local roomx, roomy = world_to_room(self.mpos.x, self.mpos.y)
+		local room_id = world_to_room_id(self.mpos.x, self.mpos.y)
+		graphics.print(string.format("%+4i,%+4i,%+3i,%+3i,%3i", self.mcell.x, self.mcell.y, roomx, roomy, room_id), 32, 0)
 		graphics.pop()
 
         if self.palette_mouse_over_tile then

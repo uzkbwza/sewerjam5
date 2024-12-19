@@ -26,6 +26,10 @@ function bonglewunch:__newindex(k, v)
 	end
 end
 
+function bonglewunch:length()
+	return self.__length
+end
+
 function bonglewunch:ipairs()
 	local index = 0
 	local t = self.__array

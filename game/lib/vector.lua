@@ -36,6 +36,10 @@ function Vec2.__mul(a, b)
 	end
 end
 
+function Vec2.__unm(a)
+	return Vec2(-a.x, -a.y)
+end
+
 function Vec2.__div(a, b)
 	if type(a) == "number" then
 		return Vec2(b.x / a, b.y / a)
@@ -64,6 +68,10 @@ end
 
 function Vec2:magnitude()
 	return math.sqrt(self.x * self.x + self.y * self.y)
+end
+
+function Vec2:angle_to(b)
+	return math.atan2(b.y - self.y, b.x - self.x)
 end
 
 function Vec2:normalized()
@@ -179,6 +187,10 @@ function Vec3.__mul(a, b)
 	else
 		return Vec3(a.x * b.x, a.y * b.y, a.z * b.z)
 	end
+end
+
+function Vec3.__unm(a)
+	return Vec3(-a.x, -a.y, -a.z)
 end
 
 function Vec3.__div(a, b)
@@ -519,6 +531,10 @@ end
 
 function vec2_magnitude_table(a)
     return math.sqrt(a.x * a.x + a.y * a.y)
+end
+
+function vec2_approach(x1, y1, x2, y2, delta)
+	return approach(x1, x2, delta), approach(y1, y2, delta)
 end
 
 function vec2_normalized(x, y)

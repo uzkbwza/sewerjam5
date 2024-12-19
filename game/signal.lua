@@ -98,7 +98,7 @@ function signal.connect(emitter, signal_id, listener, connection_id, func, onesh
     local sig = signal.get(emitter, signal_id)
     
     if sig == nil then
-        error("signal " .. tostring(signal_id) .. " does not exist for object " .. tostring(emitter))
+        error("signal `" .. tostring(signal_id) .. "` does not exist for object " .. tostring(emitter))
     end
     
     sig.listeners[listener] = sig.listeners[listener] or {}

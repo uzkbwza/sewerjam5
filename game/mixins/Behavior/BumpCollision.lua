@@ -90,8 +90,8 @@ end
 
 function BumpCollision:bump_world_update()
     if self.bump_world then
-		local offset_x, offset_y = self:get_collision_rect_offset()
-        self.bump_world:add(
+        local offset_x, offset_y = self:get_collision_rect_offset()
+        self.bump_world[self.bump_world:hasItem(self) and "update" or "add"](self.bump_world,
             self,
             self.pos.x + offset_x,
             self.pos.y + offset_y,

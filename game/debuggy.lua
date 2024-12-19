@@ -95,6 +95,7 @@ end
 
 
 function dbg(k, v)
+	if not debug.enabled then return end
 	if type(k) == "table" then
 		for k2, v2 in pairs(k) do
 			dbg(k2, v2)

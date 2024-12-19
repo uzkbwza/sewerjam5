@@ -20,7 +20,8 @@ function DeliveryGuy:new(x, y, invuln)
         local result = old_bump_filter(item, other)
         return result
     end
-
+    self.is_player = true
+	
     self.state = "Walking"
 	-- order kinda matters!
 	self:implement(Mixins.Behavior.AutoStateMachine)
@@ -37,16 +38,18 @@ function DeliveryGuy:new(x, y, invuln)
         entered_function = function(self, other)
             self:on_hit(other)
         end,
-        bump_mask = to_layer_bit(PHYSICS_HAZARD)
+        bump_mask = to_layer_bit(PHYSICS_HAZARD),
+		sense_sensors = true,
     }
 
 	local object_sensor_config = {
         collision_rect = Rect.centered(0, 0, 16, 16),
         entered_function = function(self, other)
-			if other.is_pickup then	
+			if other.is_pickup and not self.cutscene then	
 				other:pickup()
 			end
-			if other.level_complete_tile then
+			if other.level_complete_tile and not self.level_complete then
+				self.level_complete = true
 				self:emit_signal("level_complete")
 			end
         end,
@@ -95,7 +98,8 @@ function DeliveryGuy:new(x, y, invuln)
 		aim_down_released = true,
 		aim_left_released = true,
 		aim_right_released = true,
-		aim = Vec2(0, 0),
+        aim = Vec2(0, 0),
+		aim_digital = Vec2(0, 0),
 		move_normalized = Vec2(0, 0),
 		move_up = false,
 		move_down = false,
@@ -152,6 +156,11 @@ function DeliveryGuy:enter()
 end
 
 function DeliveryGuy:update(dt)
+    if debug.enabled then
+		if input.keyboard_held["k"] then
+			self:die()
+		end
+	end
 end
 
 function DeliveryGuy:cooldown_end()
@@ -180,6 +189,9 @@ end
 
 function DeliveryGuy:on_hit(by)
 	-- print(by)
+	if self.state == "PitJump" and self.state_tick >= 10 and self.state_tick <= 20 then
+		return
+	end
 	if self.invuln then
 		return
 	end
@@ -195,6 +207,19 @@ function DeliveryGuy:die()
 	self.dead = true
 	self:emit_signal("died")
 	self:queue_destroy()
+	self:die_fx()
+end
+
+function DeliveryGuy:fake_die()
+    -- self.dead = true
+    self:die_fx()
+	self:set_visibility(false)
+	-- self:emit_signal("died")
+	-- self:queue_destroy()
+	-- self:die_fx()
+end
+
+function DeliveryGuy:die_fx()
 	local fx = DeathFx(self.pos.x, self.pos.y, self:get_texture(), self.flip)
     fx.duration = fx.duration * 2
 	self:spawn_object(fx)
@@ -208,7 +233,7 @@ function DeliveryGuy:process_collision(collision)
 end
 
 function DeliveryGuy:get_texture()
-	return floor(self.tick / 10) % 2 == 0 and textures.player_placeholder1 or textures.player_placeholder2	
+	return floor(self.tick / 10) % 2 == 0 and textures.player_placeholder1 or textures.player_placeholder2
 end
 
 function DeliveryGuy:draw()
@@ -218,10 +243,15 @@ function DeliveryGuy:draw()
 	end
 	graphics.push()
 	if not self.world.cutscene then
-		graphics.origin()
+        graphics.origin()
+
 		graphics.translate(self.pos.x, self.pos.y - self.world.scroll)
+		if global_state.hudless_level and self.world.level_data.cutscene_offset ~= false then
+			graphics.translate(tilesets.TILE_SIZE / 2, 0)
+		end
 	end
-    graphics.draw_centered(self:get_texture(), 0, 0, 0, self.flip, 1, 0, 1)
+
+	graphics.draw_centered(self:get_texture(), 0, 0, 0, self.flip, 1, 0, 1)
 	graphics.pop()
 end
 
@@ -362,8 +392,8 @@ function DeliveryGuy:handle_aim_input()
     --     self.facing_direction_x = 1
     -- end
 
-	self.facing_direction_x = input.aim.x
-	self.facing_direction_y = input.aim.y
+	self.facing_direction_x = input.aim_digital.x
+	self.facing_direction_y = input.aim_digital.y
 
 	if not self.state == "PitJump" then
 		if self.facing_direction_x > 0 and self.snapped_east then
@@ -419,13 +449,18 @@ end
 ------------------------------------------
 
 -- State: Walking
+
+function DeliveryGuy:state_Walking_enter()
+	self.z_index = 0
+end
+
 function DeliveryGuy:state_Walking_update(dt)
 	local input = self:get_input_table()
     self:handle_movement_input(self.cutscene and self.cutscene_input or nil)
     self:handle_aim_input(self.cutscene and self.cutscene_input or nil)
 
 	local world_scroll = 0
-	if self.world.scrolling then
+	if self.world.scrolling or self.level_complete then
 		world_scroll = dt * self.world.scroll_speed * self.world.scroll_direction
 	end
 
@@ -444,7 +479,7 @@ function DeliveryGuy:state_Walking_update(dt)
     end
 
     if input.aim_up or input.aim_down or input.aim_left or input.aim_right then
-        self:shoot_bullet(self.invuln)
+        self:shoot_bullet()
     end
 
     local tile = self:get_tile_relative(0, 0, 0)
@@ -475,6 +510,7 @@ function DeliveryGuy:state_Walking_update(dt)
 end
 
 function DeliveryGuy:state_PitJump_enter()
+	self.z_index = 2
 	
     local s = self.sequencer
 	self:play_sfx("player_jump")

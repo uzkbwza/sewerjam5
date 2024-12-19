@@ -49,10 +49,11 @@ function stringy.strip_char(s, char, left, right)
 end
 
 function stringy.split(string, substr)
-	if substr == nil then
-		substr = "%s"
-	end
 	local t = {}
+    if substr == nil or substr == "" then
+        string:gsub(".", function(c) table.insert(t, c) end)
+        return t
+    end
 	for str in string.gmatch(string, "([^"..substr.."]+)") do
 		table.insert(t, str)
 	end

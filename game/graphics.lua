@@ -131,6 +131,10 @@ end
 
 -- local ordered_draw = {}
 
+function graphics.update(dt)
+	graphics.sequencer:update(dt)
+end
+
 function graphics.game_draw()
 	graphics.push()
 
@@ -190,12 +194,24 @@ local flash_table = {
 }
 
 function graphics.color_flash(offset, tick_length)
-    local color = flash_table[floor(((gametime.ticks / tick_length) + offset) % #flash_table) + 1]
+    local color = flash_table[floor(((gametime.tick / tick_length) + offset) % #flash_table) + 1]
 	return color
 end
 
 function graphics.set_line_width(width)
 	love.graphics.setLineWidth(width)
+end
+
+function graphics.frame_rumble(intensity)
+    local s = graphics.sequencer
+    if graphics.rumble_coroutine then
+        s:stop(graphics.rumble_coroutine)
+    end
+	graphics.rumble_coroutine = s:start(function()	
+        s:tween_property(graphics, "screen_rumble_intensity", intensity * usersettings.screen_shake_amount, 0, 1, "constant0")
+        graphics.rumble_coroutine = nil
+		graphics.screen_rumble_intensity = 0
+    end)
 end
 
 function graphics.start_rumble(intensity, duration, easing_function)
@@ -277,7 +293,7 @@ function graphics.draw_loop()
 	local canvas_to_draw = graphics.canvas
 
 	if usersettings.use_screen_shader and viewport_pixel_scale > 1 then
-		if gametime.ticks % 10 == 0 then
+		if gametime.tick % 10 == 0 then
 			-- pcall(graphics.shader.update)
 		end
 

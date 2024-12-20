@@ -53,6 +53,7 @@ local GlobalState = Object:extend("GlobalState")
 
 function GlobalState:new()
     GlobalState.super.new(self)
+	print(O.Misc.LevelCompleteTile)
 	signal.register(self, "extra_life_threshold_reached")
     self.score = 0
 	self.high_score = HIGH_SCORES[1] and HIGH_SCORES[1][2] or 0
@@ -284,6 +285,7 @@ function HUDLayer:draw()
 end
 
 function TitleScreen:new()
+	audio.play_sfx(audio.sfx.cutscene_boop)
     TitleScreen.super.new(self)
     self:add_signal("selected")
 end
@@ -508,18 +510,22 @@ function GuideScreen:draw()
 	graphics.print(text5, 8, 96 + 24)
 end
 
+
 function TitleScreen:draw()
 	graphics.set_color(palette.white)
 	graphics.set_font(FONT)
-	local text = "THE TITLE OF GAME"
-    local text2 = "PRESS ENTER/START"
-	local text3 = "MADE BY IVY SLY"
-    local text_width = FONT:getWidth(text)
+	-- local text = "FAMULUS"
+    local text2 = "BY IVY SLY"
+	local text3 = "PRESS ENTER/START"
+    -- local text_width = FONT:getWidth(text)
 	local text2_width = FONT:getWidth(text2)
-	local text3_width = FONT:getWidth(text3)
-    graphics.print(text, self.viewport_size.x / 2 - text_width / 2, self.viewport_size.y / 2 - 88)
-    graphics.print(text2, self.viewport_size.x / 2 - text2_width / 2, self.viewport_size.y / 2 + 0)
-	graphics.print(text3, self.viewport_size.x / 2 - text3_width / 2, self.viewport_size.y / 2 + 80)
+    local text3_width = FONT:getWidth(text3)
+	graphics.draw(textures.title, 0, 0)
+    -- graphics.print(text, self.viewport_size.x / 2 - text_width / 2, self.viewport_size.y / 2 - 88)
+	graphics.set_color("8000ff")
+    graphics.print(text2, self.viewport_size.x / 2 - text2_width / 2, self.viewport_size.y / 2 + 2)
+	graphics.set_color(graphics.color_flash(0, 10))
+	graphics.print(text3, self.viewport_size.x / 2 - text3_width / 2, self.viewport_size.y / 2 + 40)
 end
 
 function ContinueLayer:new()
@@ -583,6 +589,85 @@ function ContinueLayer:draw()
 end
 
 
+function PauseLayer:new()
+    PauseLayer.super.new(self)
+    self.selected = 1
+    self.blocks_input = true
+    self.blocks_logic = true
+	self.destroying = nil
+    self:add_signal("quit")
+	self:add_elapsed_ticks()
+end
+
+function PauseLayer:update(dt)
+    if self.tick < 2 then
+		return
+	end
+
+    if input.confirm_pressed then
+        self:choose()
+		return
+	elseif input.menu_pressed then
+        self.destroying = 10
+		return
+    end
+
+    if self.destroying then
+        self.destroying = self.destroying - 1
+		if self.destroying <= 0 then
+			self:destroy()
+		end
+        return
+    end
+
+    local input = self.input
+	
+    if input.move_down_pressed or input.move_up_pressed or input.aim_down_pressed or input.aim_up_pressed then
+        if self.selected == 1 then self.selected = 2 else self.selected = 1 end
+    end
+	-- self.timer = self.timer - frames_to_seconds(dt)
+    -- if self.timer <= 0 then
+    --     self:choose()
+    -- end
+	
+
+	
+end
+
+function PauseLayer:choose()
+    if self.selected == 2 then
+		signal.emit(self, "quit")
+    else
+		self.destroying = 10
+	end
+end
+
+function PauseLayer:draw()
+    graphics.set_font(FONT)
+	
+	local text = "PAUSED"
+    local text_width = FONT:getWidth(text)
+    graphics.set_color(palette.black)
+    local width = SCREEN_WIDTH
+	if global_state.hudless_level then
+		width = self.viewport_size.x
+	end
+	graphics.rectangle("fill", width / 2 - 48, self.viewport_size.y / 2 - 32, 96, 56)
+
+
+    graphics.set_color(palette.white)
+
+	graphics.translate(0, self.viewport_size.y / 2 - 8)
+
+	graphics.print_outline("000000", text, width / 2 - text_width / 2, 0 - 16, 0, 1, 1, 0, 0)
+
+	-- graphics.print(tostring(floor(self.timer)), width / 2 - 4, 0)
+    graphics.set_color(self.selected == 2 and palette.white or graphics.color_flash(0, 10))
+	graphics.print("RESUME", width / 2 - text_width / 2, 0)
+    graphics.set_color(self.selected == 1 and palette.white or graphics.color_flash(0, 10))
+    graphics.print("QUIT", width / 2 - text_width / 2, 0 + 16)
+end
+
 function GameLayer:new()
     GameLayer.super.new(self)
 	self:add_signal("level_complete")
@@ -625,7 +710,7 @@ function GameLayer:player_death_effect()
 	end)
 end
 
-function MainScreen:score_stuff()
+function MainScreen:end_game()
     local s = self.sequencer
     if self.game_layer then
         self.game_layer:destroy()
@@ -646,6 +731,10 @@ function MainScreen:score_stuff()
 end
 
 function MainScreen:new()
+	if not debug.enabled then
+        SKIP_CUTSCENE = false
+		START_SCREEN = 1
+	end
     MainScreen.super.new(self)
     local s = self.sequencer
 
@@ -653,7 +742,16 @@ function MainScreen:new()
 
     if scores == nil then
         HIGH_SCORES = {
-            -- { "SLY", 0 },
+            { "SLY", 100000 },
+            { "SLY", 95000 },
+            { "SLY", 90000 },
+            { "SLY", 85000 },
+            { "SLY", 80000 },
+            { "SLY", 75000 },
+            { "SLY", 70000 },
+            { "SLY", 65000 },
+            { "SLY", 60000 },
+            { "SLY", 55000 },
         }
     else
         HIGH_SCORES = table.deserialize(scores)
@@ -666,7 +764,8 @@ function MainScreen:new()
         self.title_screen:destroy()
 		s:wait(10)
 		global_state = GlobalState()
-		self:ref("hud_layer", self:push(HUDLayer))
+        self:ref("hud_layer", self:push(HUDLayer))
+		global_state.can_pause = false
 	
         for i=START_SCREEN, #global_state.levels do
 			local level = global_state.levels[i]
@@ -681,6 +780,7 @@ function MainScreen:new()
                 while true do
                     s:wait_for_signal(self.game_layer, "level_complete")
                     global_state.cutscene = false
+					global_state.can_pause = false
                     local success = unpack(s.signal_output)
                     if not success then
                         self:ref("continue_layer", self:push(ContinueLayer))
@@ -688,9 +788,10 @@ function MainScreen:new()
                         self.continue_layer:destroy()
                         local selected = unpack(s.signal_output)
                         if selected == 0 then
-							self:score_stuff()
-							return
+                            self:end_game()
+                            return
                         end
+						global_state.can_pause = true
                     else
                         break
                     end
@@ -701,7 +802,7 @@ function MainScreen:new()
 				s:wait_for_signal(self.guide_screen, "selected")
 				self.guide_screen:destroy()
             elseif level.type == "end" then
-				self:score_stuff()
+				self:end_game()
                 return
             end
         end
@@ -711,13 +812,22 @@ end
 function MainScreen:update(dt)
 	MainScreen.super.update(self, dt)
 
+	
     if self.input.debug_editor_toggle_pressed then
         self:transition_to("LevelEditor")
     end
-    if self.input.menu_pressed then
-        self:push_to_parent(PauseLayer)
-    end
-	
+
+	local can_pause = (not global_state.cutscene) and self.game_layer and self.game_layer.world and global_state.can_pause
+
+	if self.input.menu_pressed and can_pause and not self.pause_layer then
+        self:ref("pause_layer", self:push(PauseLayer))
+		signal.connect(self.pause_layer, "quit", self, "pause_quit", function()
+			self:transition_to("MainScreen")
+		end)
+		
+	end
+
+
 end
 
 ScrollingGameWorld.scroll_events = {
@@ -957,6 +1067,7 @@ function ScrollingGameWorld:clear_all_enemies()
 end
 
 function ScrollingGameWorld:on_player_completed_level()
+	global_state.can_pause = false
 	local s = self.sequencer
 	s:start(function()
 		self.player.cutscene = true
@@ -1042,7 +1153,8 @@ function ScrollingGameWorld:enter()
 			self.scrolling = true
 			self.player.cutscene = false	
 			if not self.cutscene then
-				audio.play_music(audio.music[self.level_data.song], self.level_data.music_volume or 1.0)
+                audio.play_music(audio.music[self.level_data.song], self.level_data.music_volume or 1.0)
+				global_state.can_pause = true
 			end
 		end)
 	end
@@ -1117,7 +1229,7 @@ function ScrollingGameWorld:cutscene2()
 	if not SKIP_CUTSCENE then
 		s:wait(120)
 
-		self:cutscene_text("HAVE YOU SEEN\nMY FAMULUS?", 0, 50, 120)
+		self:cutscene_text("HAVE YOU SEEN\nMY THRALL?", 0, 50, 120)
 		s:wait(90)
 		self:cutscene_text("YOU AGAIN?", 0, -56, 120)
 		s:wait(110)
@@ -1135,7 +1247,8 @@ function ScrollingGameWorld:cutscene2()
     self.player.cutscene = false
 	self.force_color_flash = true
     self.cutscene = false
-	global_state.cutscene = false
+    global_state.cutscene = false
+	global_state.can_pause = true
 	
     s:wait_for_signal(vendor, "died")
     audio.stop_music()
@@ -1162,23 +1275,18 @@ function ScrollingGameWorld:cutscene3()
 
 	s:tween(function(y) player:tp_to(player.pos.x, y) end, player.pos.y, player.pos.y + 64, SKIP_CUTSCENE and 10 or 90)
     if not SKIP_CUTSCENE then
-        s:wait(90)
-        self:cutscene_text("WHERE WERE YOU?", 0, -56, 120)
+		s:wait(60)
+        self:cutscene_text("WHAT ARE YOU\nDOING BACK HERE?", 0, -56, 120)
         s:wait(120)
 
-        self:cutscene_text("SHOULDN'T I BE\nASKING THAT OF YOU?", 0, 50, 150)
-        s:wait(60)
-
-        self:cutscene_text("I WAITED HERE SO LONG\nFOR YOU", 0, 50, 150)
-        s:wait(60)
-
-        self:cutscene_text("TO RETURN WITH THE KEBAB", 0, 50, 150)
-        s:wait(60)
-
-		self:cutscene_text("YOUR PURPOSE WAS TO RETRIEVE", 0, 50, 150)
+		self:cutscene_text("HAVE YOU FORGOTTEN ALREADY?", 0, 50, 150)
 		s:wait(60)
+		self:cutscene_text("I CONJURED YOU TO PROCURE\nFOR ME A GRILLED MEAT", 0, 50, 150)
+		s:wait(60)
+		self:cutscene_text("NOW HAND IT OVER!", 0, 50, 150)
+        s:wait(60)
 
-        self:cutscene_text("NOW GIVE IT TO ME!", 0, 50, 150)
+
     end
 	
 	self:ending1(creator)
@@ -1203,8 +1311,9 @@ function ScrollingGameWorld:ending1(creator)
 	if not SKIP_CUTSCENE then
 		self:cutscene_text("THIS CAN'T BE!", 0, -56, 120)
 		s:wait(60)
-		self:cutscene_text("YOU ARE NO MASTER OF MINE!", 0, -56, 120)
 		audio.stop_music()
+        self:cutscene_text("YOU ARE NO MASTER OF MINE!", 0, -56, 120, "cutscene_boop")
+		-- s:wait(60)
 		s:wait(30)
 	end
     audio.play_music(audio.music.boss1)
@@ -1214,18 +1323,49 @@ function ScrollingGameWorld:ending1(creator)
     self.cutscene = false
 	creator:change_state(creator:get_next_state())
     global_state.cutscene = false
-	global_state.hudless_level = true
+    global_state.hudless_level = true
+	global_state.can_pause = true
 
 	s:wait_for_signal(creator, "died")
 
-    global_state.game_complete = true
     global_state.cutscene = true
-	self.force_color_flash = false
+	
 
+	self.force_color_flash = false
 	self.player.cutscene = true
     self.scrolling = false
 
     local _1cc = global_state.continues_used == 0
+
+	if _1cc then
+		-- audio.stop_music()
+        s:wait(60)
+		-- audio.play_music(audio.music.boss1)
+
+		self:cutscene_text("CAN'T YOU SEE?", 0, 0, 120)
+        s:wait(60)
+		self:cutscene_text("WE ARE BOTH\nFATED TO DIE HERE", 0, 0, 120)
+		s:wait(60)
+		self.force_color_flash = true
+		self.player.cutscene = false
+		global_state.cutscene = false
+
+        creator:init_health(150)
+		creator.phase = 4
+		creator:change_state(creator:get_next_state())
+        s:wait_for_signal(creator, "died")
+	end
+
+	
+    _1cc = global_state.continues_used == 0
+
+	global_state.cutscene = true
+    global_state.game_complete = true
+
+	self.force_color_flash = false
+	self.player.cutscene = true
+    self.scrolling = false
+
 	-- _1cc = false
 
 	audio.stop_music()
@@ -1233,16 +1373,16 @@ function ScrollingGameWorld:ending1(creator)
 
 	s:wait(1)
     local score = creator.score
-	if _1cc then score = score * 1.5 end	
+	if _1cc then score = score * 1.5 end
 
 
 	if not _1cc then
-    	player.invuln = true
+		player.invuln = true
 	end
 	creator.invuln = true
     s:wait(120)
-    player.invuln = false
-	creator.invuln = false
+    -- player.invuln = false
+	-- creator.invuln = false
 	while not creator.player do
 		creator:ref_player()
 		s:wait(1)
@@ -1279,13 +1419,13 @@ function ScrollingGameWorld:ending1(creator)
     else
 		self.blackout = true
         s:wait(30)
-		self:cutscene_text("HISTORY WILL MOURN\nNO SHADES ERRANT", 0, 0, 180, "cutscene_boop")
+		self:cutscene_text("HISTORY WILL MOURN\nNO ERRANT SHADES", 0, 0, 180, "cutscene_boop")
         s:wait(10)
         self:cutscene_text("SPURN DEATH\nTO ACHIEVE LIFE", 0, 0, 180, "cutscene_boop")
         s:wait(10)
         self:cutscene_text("COMPLETE THE GAME\nWITH NO CONTINUES", 0, 0, 180, "cutscene_boop")
         s:wait(10)
-		self:cutscene_text("OR YOU ARE FATED\nTO RELIVE THIS TALE", 0, 0, 180, "cutscene_boop")
+		self:cutscene_text("OR FATE SHALL CONDEMN YOU\nTO RELIVE THIS TALE", 0, 0, 180, "cutscene_boop")
 		-- s:wait(120)
 
 		-- global_state.cutscene = true
@@ -1591,7 +1731,7 @@ function ScrollingGameWorld:get_cells_on_screen()
 end
 
 function ScrollingGameWorld:draw()
-	
+
 	graphics.push()
 
 	local spawn_y = self:get_scroll_spawn_ycell()
@@ -1626,7 +1766,7 @@ function ScrollingGameWorld:draw()
 				local color = bg_color
 				local tile = self:get_tile(x, y, 0)
 				if tile and tile.data and tile.data.auto_color and self:is_cell_solid(x, y, 0) then
-					if (self.scrolling or self.force_color_flash) and (floor(self.tick / 1) % 2 == 0 and abs((y % 38) - (floor(self.scroll_direction * -self.tick * self.scroll_speed) % 38)) < 4) then
+					if (self.scrolling or self.force_color_flash) and (floor(gametime.tick / 1) % 2 == 0 and abs((y % 38) - (floor(self.scroll_direction * -self.tick * self.scroll_speed) % 38)) < 4) then
 						color = graphics.color_flash(y * 2, 4)
 					end
 					graphics.set_color(color)
@@ -1680,6 +1820,13 @@ function ScrollingGameWorld:draw()
 	end
 
     self.map:draw_world_space("dynamic", x1, y1, x2, y2, 1, nil)
+
+	-- graphics.set_color(palette.black, 0.5)
+	-- graphics.rectangle("fill", 0, 0, self.viewport_size.x, self.viewport_size.y)
+	-- graphics.translate(0, 16)
+	-- graphics.set_color(palette.white)
+	-- graphics.draw(textures.title, 0, 0)
+
 	-- self.map:draw("static", nil, nil, nil, nil, 1, nil)
 	
 	-- graphics.draw_centered(spritesheet[2], self.player.pos.x, self.player.pos.y)

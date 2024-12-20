@@ -189,7 +189,7 @@ end
 
 function DeliveryGuy:on_hit(by)
 	-- print(by)
-	if self.state == "PitJump" and self.state_tick >= 10 and self.state_tick <= 20 then
+	if self.state == "PitJump" and self.state_tick >= 2 and self.state_tick <= 20 then
 		return
 	end
 	if self.invuln then
@@ -237,7 +237,7 @@ function DeliveryGuy:get_texture()
 end
 
 function DeliveryGuy:draw()
-
+	-- if true then return end
 	if self.invuln and floor(self.tick / 2) % 2 == 0 then
 		return
 	end

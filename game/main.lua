@@ -140,7 +140,7 @@ function love.run()
 
 
 		gametime.time = gametime.time + delta_frame
-        gametime.ticks = floor(gametime.time)
+        gametime.tick = floor(gametime.time)
 
 		
         gametime.frames = gametime.frames + 1
@@ -148,7 +148,7 @@ function love.run()
 
 
 		
-        if gametime.ticks % 300 == 0 then
+        if gametime.tick % 300 == 0 then
             if debug.enabled and not debug_printed_yet then
                 local fps = love.timer.getFPS()
                 -- if conf.use_fixed_delta and fps > conf.fixed_tickrate then
@@ -181,8 +181,8 @@ function love.load()
 end
 
 function love.update(dt)
-	if gametime.ticks % 1 == 0 then 
-		-- dbg("ticks", gametime.ticks)
+	if gametime.tick % 1 == 0 then 
+		-- dbg("ticks", gametime.tick)
 		local fps = love.timer.getFPS()
         if conf.use_fixed_delta and fps > conf.fixed_tickrate then
             fps = conf.fixed_tickrate
@@ -200,7 +200,8 @@ function love.update(dt)
 
 	input.update(dt)
 	game:update(dt)
-	
+	graphics.update(dt)
+
 	-- global input shortcuts
 	if input.fullscreen_toggle_pressed then
 		love.window.setFullscreen(not love.window.getFullscreen())
@@ -238,7 +239,7 @@ function love.draw()
 	if debug.can_draw() then
 		debug.printlines(0, 0)
     end
-	if gametime.ticks % 10 == 0 then
+	if gametime.tick % 10 == 0 then
 		if debug.enabled then
 			dbg("draw calls", love.graphics.getStats().drawcalls)
 		end

@@ -42,6 +42,7 @@ function Rumble:stop_rumble()
 end
 
 function Rumble:frame_rumble(intensity)
+	self:start_rumble(intensity, 1, "constant0")
 end
 
 return Rumble

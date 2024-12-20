@@ -6,7 +6,7 @@ function Wall:new(x, y)
 	Wall.super.new(self, x, y)
 	self.collision_rect = Rect(0, 0, 18, 18)
 	self.score = 50
-	self.bullet_passthrough = true
+	-- self.bullet_passthrough = true
     self.solid = true
 	self.is_wall = true
     self:disable_bump_layer(PHYSICS_HAZARD)

@@ -2,6 +2,8 @@ local Enemy = require("obj.Enemy.Enemy")
 local FlyerEnemy = require("obj.Enemy.Flyer")
 
 local Boss1 = Enemy:extend("Boss1")
+local ObjectScore = require("fx.object_score")
+
 
 local Boss1Knife = Enemy:extend("Boss1Knife")
 
@@ -59,7 +61,8 @@ function Boss1:new(x, y)
 	self.texture = textures.enemy_vendor_at_cart
     -- order kinda matters!
 	self:implement(Mixins.Behavior.AutoStateMachine)
-    self:init_health(200)
+    -- self:init_health(200)
+    self:init_health(2)
     self.player = nil
 	self.score = 25000
     self:add_bump_sensor(hitbox_sensor_config)
@@ -81,6 +84,30 @@ function Boss1:new(x, y)
 	self.sequence = sequence
 end
 
+
+function Boss1:die()
+    local s = self.sequencer
+	self.invuln = true
+    s:clear_all()
+	s:start(function()
+		self:emit_signal("died")
+        self.dying = true
+		self:change_state("Dying")
+		self:ref("dying_knife", self:spawn_object(Boss1Knife(self.pos.x + -self.flip * 16, self.pos.y, -self.flip, 1)))
+		self.dying_knife.speed = 1.0
+        s:wait(90)
+		if self.dying_knife then
+			self.dying_knife:die()
+		end
+		self:queue_destroy()
+		self.world:play_sfx(self.death_fx or "enemy_die")
+		local tex =  self:get_texture()
+		self:spawn_object(DeathFx(self.pos.x, self.pos.y, tex, self.flip))
+		-- if not noscore and self.score > 0 then
+		self:spawn_object(ObjectScore(self.pos.x, self.pos.y, self.score))
+		-- end
+	end)
+end
 
 function Boss1:update(dt)
 	self:ref_player()
@@ -213,6 +240,7 @@ function Boss1:spawn_birds(one)
 	end)
 end
 function Boss1:draw()
+	if self.dying and floor(self.tick / 2) % 2 == 0 then return end
 	graphics.push()
     if self.state == "Idle" then
 		graphics.translate(7, 0)
@@ -266,6 +294,10 @@ function Boss1:state_Charge_enter()
 		self.texture = sheet:get_frame(1)
 		self:change_state(self:get_next_state())
 	end)
+end
+
+function Boss1:state_Dying_enter()
+	self.texture = sheet:get_frame(6)
 end
 
 function Boss1:state_Hover_enter()

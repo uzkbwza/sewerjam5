@@ -5,9 +5,9 @@ local sheet = SpriteSheet("enemy_ghosty", 16, 16)
 function BossGhost:new(x, y)
     BossGhost.super.new(self, x, y)
     self.direction = 1
-    self.distance = 700
-    self.speed = 5
-	self.close_speed = 4.5
+    self.distance = 600
+    self.speed = 3
+	self.close_speed = 5
     self.frequency = 0.05
     self.frequency_gain = 0.0
     self.ignore_despawn = true
@@ -50,7 +50,7 @@ function BossGhost:update(dt)
 		end
         if self.tick < 150 then
             self.distance = self.distance - self.close_speed * dt
-            self.distance = max(self.distance, 0)
+            self.distance = max(self.distance, 64)
         else
 			self:enable_bump_layer(PHYSICS_HAZARD, PHYSICS_ENEMY)
         end
@@ -83,9 +83,9 @@ function BossGhost:update(dt)
 end
 
 function BossGhost:draw()
-    -- if (self.tick < 150 or self.tick > 200 + self.delay - 50) and floor(self.tick / 2) % 2 == 0 then
-    --     return
-    -- end
+    if (self.tick < 200 + self.delay - 50) and floor(self.tick / 2) % 2 == 0 then
+        return
+    end
 	BossGhost.super.draw(self)
 	if not debug.can_draw() then
 		return

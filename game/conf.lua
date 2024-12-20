@@ -41,7 +41,7 @@ local conf = {
 		256,
 		192
 	),
-	display_scale = 4,
+	display_scale = 1,
 
 	-- delta
 	use_fixed_delta = false,
@@ -148,8 +148,8 @@ local conf = {
 		},
 
 		confirm = {
-			keyboard = { "return", "escape" },
-			joystick = { "start" }
+			keyboard = { "return", },
+			joystick = { "start", "a" }
 		},
 
 		debug_editor_toggle = {
@@ -204,7 +204,7 @@ local conf = {
 
 -- https://love2d.org/wiki/Config_Files
 function love.conf(t)
-	t.identity              = nil
+	t.identity              = "FAMULUS"
 	t.appendidentity        = false
 	t.version               = "11.4"
 	t.console               = false
@@ -216,7 +216,7 @@ function love.conf(t)
 	t.audio.mic             = false
 	t.audio.mixwithsystem   = true
 
-	t.window.title          = "Untitled"
+	t.window.title          = "FAMULUS"
 	t.window.icon           = nil
 	t.window.width          = conf.viewport_size.x * conf.display_scale
     t.window.height         = conf.viewport_size.y * conf.display_scale
@@ -226,7 +226,7 @@ function love.conf(t)
 	t.window.resizable      = true
 	t.window.minwidth       = conf.viewport_size.x
 	t.window.minheight      = conf.viewport_size.y
-	t.window.fullscreen     = false
+	t.window.fullscreen     = usersettings.fullscreen
     t.window.fullscreentype = "desktop"
 	if usersettings.vsync then
         t.window.vsync = -1

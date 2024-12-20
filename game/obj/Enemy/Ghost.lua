@@ -76,7 +76,7 @@ function Ghost:update(dt)
 end
 
 function Ghost:draw()
-    if self.tick > 200 + self.delay - 50 and floor(self.tick / 2) % 2 == 0 then
+    if self.tick < 200 + self.delay - 50 and floor(self.tick / 2) % 2 == 0 then
         return
     end
 	Ghost.super.draw(self)

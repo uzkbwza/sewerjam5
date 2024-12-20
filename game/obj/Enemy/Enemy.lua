@@ -2,6 +2,7 @@ local Enemy = GameObject:extend("Enemy")
 local DeathFx = require("fx.death_effect")
 local ObjectScore = require("fx.object_score")
 
+
 -- local DeathFxSpriteSheet = SpriteSheet(textures.fx_enemydeath, 32, 32)
 -- local DeathFxAnimation = DeathFxSpriteSheet:get_animation(4)
 

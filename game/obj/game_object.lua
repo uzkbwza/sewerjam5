@@ -501,7 +501,9 @@ function GameObject:destroy()
 	if self.is_destroyed then return end
     if self.objects_to_destroy then
         for v, _ in pairs(self.objects_to_destroy) do
-            signal.disconnect(v, "destroyed", self, "on_object_to_destroy_destroyed_early")
+			if signal.get(v, "destroyed") then
+				signal.disconnect(v, "destroyed", self, "on_object_to_destroy_destroyed_early")
+			end
             v:destroy()
         end
     end

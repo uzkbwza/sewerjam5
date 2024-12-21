@@ -1288,6 +1288,9 @@ function ScrollingGameWorld:cutscene2()
 	
     s:wait_for_signal(vendor, "died")
     audio.stop_music()
+	while not self.player do
+		s:wait(1)
+	end
     self.player.cutscene = true
 	
 	s:wait(120)

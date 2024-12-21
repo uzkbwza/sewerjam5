@@ -55,28 +55,6 @@ function World:create_camera()
 	return self.camera
 end
 
--- function World:play_sfx(name, x, y, volume, pitch, loop, polyphony)
-
--- 	local src = audio.get_sfx(name)
-
---     self.sfx_polyphony[name] = (polyphony or self.sfx_polyphony[name]) or math.huge
---     self.sfx_sources_playing[name] = (self.sfx_sources_playing[name] or bonglewunch())
--- 	local sources_playing = self.sfx_sources_playing[name]
---     if #sources_playing >= self.sfx_polyphony[name] then
--- 		local old = sources_playing[1]
---         self.world_sfx:remove(old)
--- 		table.remove(sources_playing, 1)
---         old:stop()
--- 		old:release()
--- 	else
--- 		table.insert(sources_playing, src)
--- 	end
-
--- 	src:setPosition(x, y)
---     audio.play_sfx(src, volume, pitch, loop)
---     self.world_sfx:push({name=name, src=src})
--- end
-
 function World.z_sort(a, b)
 	return (a.z_index or 0) < (b.z_index or 0)
 end
@@ -343,22 +321,13 @@ function World:draw_shared()
 	self.camera_offset = self.camera_offset or Vec2()
 	self.camera_offset.x = floor(offset_x)
 	self.camera_offset.y = floor(offset_y)
-	-- self.camera_offset.x = floor(self.camera_offset.x)
-	-- self.camera_offset.y = floor(self.camera_offset.y)
 
 	graphics.push()
 	graphics.origin()
 	graphics.set_color(1, 1, 1, 1)
 	graphics.scale(zoom, zoom)
-	-- graphics.translate((offset.x), (offset.y))
 
 	graphics.translate(offset_x, offset_y)
-
-	-- if self.map then
-	-- self.map:draw()
-
-	-- print(self.map.layers)	
-	-- end
 
 	self:draw()
 

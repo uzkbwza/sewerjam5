@@ -41,7 +41,7 @@ local conf = {
 		256,
 		192
 	),
-	display_scale = 1,
+	display_scale = 5,
 
 	-- delta
 	use_fixed_delta = false,

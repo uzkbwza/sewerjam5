@@ -1,6 +1,6 @@
 local debuggy = setmetatable({}, {__index = debug})
 
-debug.enabled = true
+debug.enabled = false
 debug.draw = false
 debug.lines = {}
 

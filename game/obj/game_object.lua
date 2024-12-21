@@ -594,6 +594,11 @@ function GameObject:add_signal(signal_name)
 end
 
 function GameObject:emit_signal(signal_name, ...)
+    if not debug.enabled then
+		if not signal.get(self, signal_name) then
+			return
+		end
+	end
 	signal.emit(self, signal_name, ...)
 end
 

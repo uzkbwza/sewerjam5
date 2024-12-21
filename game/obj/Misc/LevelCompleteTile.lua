@@ -5,7 +5,7 @@ function LevelCompleteTile:new(x, y)
 	self.collision_rect = Rect(0, 0, 16, 16)
 	self:implement(Mixins.Behavior.BumpCollision)
 	self:enable_bump_layer(PHYSICS_OBJECT)
-	self.level_complete_tile = true
+    self.level_complete_tile = true
 end
 
 function LevelCompleteTile:draw()

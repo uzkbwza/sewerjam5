@@ -9,6 +9,7 @@ local ScrollingGameWorld = World:extend("ScrollingGameWorld")
 local GuideScreen = CanvasLayer:extend("GuideScreen")
 local HighScoreEntryScreen = CanvasLayer:extend("HighScoreEntryScreen")
 local HighScoreScreen = CanvasLayer:extend("HighScoreScreen")
+local ObjectScore = require("fx.object_score")
 
 local DeathFx = require"fx.death_effect"
 
@@ -19,9 +20,9 @@ local MAP_WIDTH = 10
 local SCREEN_WIDTH = 176
 local LIVES = 3
 
-local START_SCREEN = 1
+local START_SCREEN = 4
 
-local SKIP_CUTSCENE = true
+local SKIP_CUTSCENE = false
 
 local FONT = graphics.font["PressStart2P-8"]
 
@@ -284,18 +285,6 @@ function HUDLayer:draw()
 
 end
 
-function TitleScreen:new()
-	audio.play_sfx(audio.sfx.cutscene_boop)
-    TitleScreen.super.new(self)
-    self:add_signal("selected")
-end
-
-function TitleScreen:update(dt)
-    if input.confirm_pressed then
-        signal.emit(self, "selected")
-		audio.play_sfx(audio.sfx.cutscene_boop)
-    end
-end
 
 
 function HighScoreEntryScreen:new()
@@ -510,13 +499,38 @@ function GuideScreen:draw()
 	graphics.print(text5, 8, 96 + 24)
 end
 
+function TitleScreen:new()
+	audio.play_sfx(audio.sfx.cutscene_boop)
+    TitleScreen.super.new(self)
+    self:add_signal("selected")
+	self.selected = 1
+end
+
+function TitleScreen:update(dt)
+    if input.confirm_pressed then
+        if self.selected == 2 then
+			love.event.push("quit")
+		end
+        signal.emit(self, "selected")
+        audio.play_sfx(audio.sfx.cutscene_boop)
+    end
+    if input.move_up_pressed or input.move_down_pressed then
+        self.selected = self.selected == 1 and 2 or 1
+		audio.play_sfx(audio.sfx.cutscene_boop)
+    end
+	if input.aim_up_pressed or input.aim_down_pressed then
+        self.selected = self.selected == 1 and 2 or 1
+		audio.play_sfx(audio.sfx.cutscene_boop)
+	end
+end
 
 function TitleScreen:draw()
+	graphics.translate(0, -16)
 	graphics.set_color(palette.white)
 	graphics.set_font(FONT)
-	-- local text = "FAMULUS"
     local text2 = "BY IVY SLY"
-	local text3 = "PRESS ENTER/START"
+	-- local text = "ESCAPE/SELECT TO QUIT"
+	local text3 = "PRESS ENTER/START TO SELECT"
     -- local text_width = FONT:getWidth(text)
 	local text2_width = FONT:getWidth(text2)
     local text3_width = FONT:getWidth(text3)
@@ -524,8 +538,26 @@ function TitleScreen:draw()
     -- graphics.print(text, self.viewport_size.x / 2 - text_width / 2, self.viewport_size.y / 2 - 88)
 	graphics.set_color("8000ff")
     graphics.print(text2, self.viewport_size.x / 2 - text2_width / 2, self.viewport_size.y / 2 + 2)
-	graphics.set_color(graphics.color_flash(0, 10))
-	graphics.print(text3, self.viewport_size.x / 2 - text3_width / 2, self.viewport_size.y / 2 + 40)
+
+	
+    
+    if self.selected == 1 then
+        graphics.set_color(graphics.color_flash(0, 10))
+    else
+        graphics.set_color(palette.white)
+    end
+    graphics.print("PLAY", self.viewport_size.x / 2 - FONT:getWidth("PLAY") / 2, self.viewport_size.y / 2 + 24)
+	
+	if self.selected == 2 then
+		graphics.set_color(graphics.color_flash(0, 10))
+	else
+		graphics.set_color(palette.white)
+	end
+	graphics.print("QUIT", self.viewport_size.x / 2 - FONT:getWidth("QUIT") / 2, self.viewport_size.y / 2 + 40)
+
+	
+	graphics.set_color("808080")
+	graphics.print(text3, self.viewport_size.x / 2 - text3_width / 2, self.viewport_size.y / 2 + 80)
 end
 
 function ContinueLayer:new()
@@ -791,6 +823,11 @@ function MainScreen:new()
                             self:end_game()
                             return
                         end
+
+
+						local score_reset = ObjectScore(self.game_layer.world.player_x, self.game_layer.world.player_y, 0, "SCORE RESET")
+						self.game_layer.world:add_object(score_reset)
+
 						global_state.can_pause = true
                     else
                         break
@@ -834,7 +871,6 @@ ScrollingGameWorld.scroll_events = {
 	"map1"
 }
 
-local ObjectScore = require("fx.object_score")
 
 function ScrollingGameWorld:new(level_name, direction, cutscene, level_number)
 	self.level_number = level_number
@@ -1642,9 +1678,11 @@ function ScrollingGameWorld:update(dt)
 	local despawn_ycell = self:get_scroll_despawn_ycell()
 	self.scroll_despawn_ycell = despawn_ycell
 	
-	if global_state.continuing then 
-        self:spawn_player(self.player_x, self.player_y, true)
-		global_state.continuing = false
+    if global_state.continuing then
+        global_state.continuing = false
+		
+		self:spawn_player(self.player_x, self.player_y, true)
+
 	end
 	
 	if not global_state.hudless_level then

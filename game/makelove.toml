@@ -1,4 +1,4 @@
-name = "sewerjam5"
+name = "Famulus"
 default_targets = ["win32", "win64", "lovejs"]
 build_directory = "makelove-build"
 

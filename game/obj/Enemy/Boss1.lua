@@ -61,8 +61,8 @@ function Boss1:new(x, y)
 	self.texture = textures.enemy_vendor_at_cart
     -- order kinda matters!
 	self:implement(Mixins.Behavior.AutoStateMachine)
-    -- self:init_health(200)
-    self:init_health(2)
+    self:init_health(200)
+    -- self:init_health(2)
     self.player = nil
 	self.score = 25000
     self:add_bump_sensor(hitbox_sensor_config)
